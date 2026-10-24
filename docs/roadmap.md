@@ -131,7 +131,7 @@ Each milestone requires the one before it.
 **Requires:** nothing · **Unblocks:** M1
 
 - [ ] NestJS project, strict TypeScript, Prisma (current versions at start time)
-- [ ] Docker Compose: PostgreSQL (deployment major version), MinIO, Mailpit
+- [ ] Docker Compose: PostgreSQL (deployment major version), Mailpit (MinIO is added in M9a with the Files module)
 - [ ] Integration test runner using a real database; connection pool larger than 1 for concurrency tests
 - [ ] CI running the tests
 
@@ -348,6 +348,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M8 · **Unblocks:** M10. All five must be complete before M10; none may import another domain.
 
 ### M9a — Files
+- [ ] Add MinIO to Docker Compose and its `MINIO_ROOT_*` variables to `.env.example`
 - [ ] `StorageDriver` interface + S3/MinIO implementation (Files module only)
 - [ ] `POST /files` (multipart, limits per `kind`, real file-type check, generated storage keys); `DELETE /files/:id` (own, unattached)
 - [ ] Signed URLs for attachments; public URLs for avatars/covers
