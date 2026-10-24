@@ -144,18 +144,23 @@ Each milestone requires the one before it.
 **Requires:** M0 · **Unblocks:** M2
 Work in a throwaway branch/repo; produce a one-page **Spike A report**.
 
-- [ ] Current Prisma setup: generator, driver adapter requirement, multi-file schema (decision 101)
-- [ ] UUID v7: database-generated or application-generated (and which library) — *Spike A recommends database-generated `uuidv7()` on PostgreSQL 18+; proposed as Decision 165, pending owner approval*
-- [ ] `--create-only` migration with hand-added partial unique index, CHECK, generated `tsvector` column and trigger; generate the next migration and check what Prisma drops or alters. *Spike A finding:* GIN indexes and generated columns must be declared in the Prisma schema (`type: Gin`, `ops: raw(...)`, `dbgenerated(...)` with the exact text from `prisma db pull --print`), otherwise Prisma plans `DROP INDEX`, `DROP COLUMN` or an invalid `ALTER COLUMN ... DROP DEFAULT`; CHECK constraints, triggers and partial indexes stay hand-written SQL and are left alone by Prisma (declaring a partial index in the schema is a preview feature and is not used)
-- [ ] Verify `pg_trgm` creation during shadow-database replay (the migration must `CREATE EXTENSION` itself), migration-history replay on an empty database, and schema-drift checks (`prisma migrate diff ... --exit-code`) against both the migration history and the live database
-- [ ] Composite FKs (`Lesson→Section`, `Message→ConversationMember`, `LessonCompletion→Enrollment/Lesson`) with referential actions and `(id, course_id)` unique targets
-- [ ] Exact errors received for unique, FK, **CHECK**, deadlock and raw-query failures; reliable access to PostgreSQL error codes
-- [ ] Interactive transactions: default timeout/wait limits, throw behavior, return-value-commit-then-throw pattern (refresh-reuse)
-- [ ] Parameterized raw locking: `FOR SHARE`, `FOR NO KEY UPDATE`, advisory transaction locks; whitelisted-table helper on paper
-- [ ] Type mapping: `timestamptz`, `bigint` in JSON, enums, `jsonb`
-- [ ] Raw `tsvector` search and `pg_trgm` similarity queries with parameters
+- [x] Current Prisma setup: generator, driver adapter requirement, multi-file schema (decision 101)
+- [x] UUID v7: database-generated or application-generated (and which library) — *Spike A recommends database-generated `uuidv7()` on PostgreSQL 18+; proposed as Decision 165, pending owner approval*
+- [x] `--create-only` migration with hand-added partial unique index, CHECK, generated `tsvector` column and trigger; generate the next migration and check what Prisma drops or alters. *Spike A finding:* GIN indexes and generated columns must be declared in the Prisma schema (`type: Gin`, `ops: raw(...)`, `dbgenerated(...)` with the exact text from `prisma db pull --print`), otherwise Prisma plans `DROP INDEX`, `DROP COLUMN` or an invalid `ALTER COLUMN ... DROP DEFAULT`; CHECK constraints, triggers and partial indexes stay hand-written SQL and are left alone by Prisma (declaring a partial index in the schema is a preview feature and is not used)
+- [x] Verify `pg_trgm` creation during shadow-database replay (the migration must `CREATE EXTENSION` itself), migration-history replay on an empty database, and schema-drift checks (`prisma migrate diff ... --exit-code`) against both the migration history and the live database
+- [x] Composite FKs (`Lesson→Section`, `Message→ConversationMember`, `LessonCompletion→Enrollment/Lesson`) with referential actions and `(id, course_id)` unique targets
+- [x] Exact errors received for unique, FK, **CHECK**, deadlock and raw-query failures; reliable access to PostgreSQL error codes
+- [x] Interactive transactions: default timeout/wait limits, throw behavior, return-value-commit-then-throw pattern (refresh-reuse)
+- [x] Parameterized raw locking: `FOR SHARE`, `FOR NO KEY UPDATE`, advisory transaction locks; whitelisted-table helper on paper
+- [x] Type mapping: `timestamptz`, `bigint` in JSON, enums, `jsonb`
+- [x] Raw `tsvector` search and `pg_trgm` similarity queries with parameters
 
 **Exit:** report lists every assumption as confirmed, contradicted or different than expected, naming affected decisions. Any contradiction goes through the Change Protocol before M2.
+
+**Exit status (2026-10-24):**
+- [x] Report lists every assumption as confirmed, contradicted or different, naming affected decisions (`docs/spikes/m1-spike-a-report.md`, committed in `f97fe8a`).
+- [x] The one contradiction (C3: Prisma drops GIN indexes and generated columns that are not declared in the schema) went through the Change Protocol by owner direction, as operational migration rules (M5 above, `architecture.md` section 10) and not as a numbered decision.
+- Still open, not an Exit requirement: Decision 165 remains Proposed, awaiting owner approval; M5 schema work depends on it.
 
 ---
 

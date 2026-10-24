@@ -1,6 +1,6 @@
 # M1 — Spike A report: Prisma, manual SQL, errors, transactions
 
-> **Status:** experiments complete, 69/69 spike tests pass · **Date:** 2026-10-24 · **Branch:** `spike/m1-prisma-spike-a` (not committed)
+> **Status:** experiments complete, 69/69 spike tests pass · **Date:** 2026-10-24 · **Branch:** `spike/m1-prisma-spike-a` (this report and the related documentation changes are committed in `f97fe8a`; the spike code and evidence in `spikes/m1-spike-a/` are local-only and not committed)
 > **Stack under test (installed, not "latest"):** Prisma / `@prisma/client` / `@prisma/adapter-pg` **7.10.1**, `pg` 8.23.1, `uuid` 14.0.3, PostgreSQL **18.6** (Compose), Node 22.23.2, TypeScript 6.0.3, `tsx` 4.23.15.
 > **Where:** `spikes/m1-spike-a/` (own `package.json`, own disposable databases `nelio_spike_a`, `nelio_spike_a_shadow`, `nelio_spike_a_replay`). Nothing under `apps/backend` was touched.
 > **Legend:** **Verified** = observed in a test or CLI run here (evidence in `spikes/m1-spike-a/tests` and `evidence/`). **Docs** = taken from documentation only. **Not verified** = not tested.
