@@ -1,6 +1,6 @@
 # Nelio — Decision Log
 
-> **Scope:** the authoritative chronological record of Decisions 1–164.
+> **Scope:** the authoritative chronological record of Decisions 1–164. Decision 165 is listed as Proposed (awaiting owner approval) and is not yet part of the accepted record.
 > **Purpose:** records WHAT was decided and WHY. `architecture.md` describes the final HOW; `roadmap.md` describes implementation order.
 > **Status convention:** "Accepted" means the decision was approved by the project owner. Where a decision was later amended, tightened, extended, finalized or had its implementation changed by a later decision, this is stated in its Status line and in the later decision. Original wording is preserved, and the amendment is recorded rather than silently resolved.
 
@@ -2466,18 +2466,46 @@ Implementation follows the roadmap. Any conflict found during implementation fol
 
 ---
 
+## Decision 165 — PostgreSQL 18 minimum and database-generated UUID v7 keys
+
+**Status:** Proposed — awaiting owner approval. Not Accepted: Decision 65 stays authoritative exactly as written until this proposal is approved.
+
+### Decision (proposed)
+Require **PostgreSQL 18 or later** in local development, CI and eventual deployment. Where the schema specifies a UUID v7 primary key, the **database generates it** with PostgreSQL's native `uuidv7()` as the column default (in Prisma: `@default(dbgenerated("uuidv7()")) @db.Uuid`). Application-side generation (the `uuid` package, version 7) is used only where an id is needed before the INSERT.
+
+This proposal does **not** select a hosting provider or deployment platform.
+
+### Reason / Context
+- Decision 65 fixed UUID v7 keys and deferred the generation mechanism to Spike A ("The UUID v7 generation mechanism is confirmed in Spike A"). The roadmap M1 item asks "database-generated or application-generated".
+- Spike A (M1) verified on PostgreSQL 18.6 with Prisma 7.10.1 (`docs/spikes/m1-spike-a-report.md`, rows B1–B4): `uuidv7()` is built in (`pg_catalog`, no extension); generated ids are version 7 and sorted in creation order across 300 sequential and 500 bulk inserts. PostgreSQL's documentation describes the values as time-ordered but does not promise strict monotonicity, so ordering is a locality benefit, not a guarantee.
+- Database-side generation also covers raw SQL, seed and migration inserts. A Prisma-side `@default(uuid(7))` leaves no database default, and a raw insert without an id then fails (SQLSTATE 23502).
+- Docker Compose and CI already use `postgres:18.6` (M0).
+- **Not verified:** whether any particular hosting provider offers PostgreSQL 18; behavior on PostgreSQL older than 18; a polyfill `uuidv7()` function for older versions.
+- Alternatives considered: (B) application-generated ids only, with no PostgreSQL minimum but no default for raw inserts; (C) a hand-written `uuidv7()` polyfill for older PostgreSQL, which keeps the database default but adds code to maintain and may collide with the native function name on upgrade; (D) defer, which leaves M5 migrations without a fixed mechanism.
+
+### Relationship to existing decisions
+- References **Decision 65**. If accepted, this decision would supersede **only** the clause in Decision 65's Consequences, "The UUID v7 generation mechanism is confirmed in Spike A.", by fixing the mechanism as described above. It would also give the unspecified "deployment major version" wording (roadmap M0, architecture "same major version as deployment") the value "PostgreSQL 18 or later".
+- Preserved unchanged: UUID v7 keys, `timestamptz`, PostgreSQL enums, status columns, `deleted_at` only where history requires it (all other provisions of Decision 65), and every other decision.
+- On acceptance (not done now): the Status of Decision 65 becomes "Accepted (generation mechanism finalized by Decision 165)", recorded in both entries; `architecture.md` (primary-key convention and the PostgreSQL development-environment row) and the `roadmap.md` M0 wording lose their "proposed" label.
+
+### Consequences / Constraints
+- If accepted: Prisma models use `dbgenerated("uuidv7()")` for UUID v7 keys; the PostgreSQL minimum can only be lowered by a new decision; the owner confirms PostgreSQL 18 availability for the intended deployment before accepting.
+- Until approved: no change to Decision 65; the M5 schema migrations depend on the outcome.
+
+---
+
 ## Future Decisions
 
 The next available decision number is:
 
-**Decision 165**
+**Decision 166** (Decision 165 is proposed and awaiting owner approval)
 
 ---
 
 # Decision Governance
 
-- **Current decisions:** 1–164
-- **Next available decision:** 165
+- **Current (accepted) decisions:** 1–164 · **Proposed, awaiting owner approval:** 165
+- **Next available decision:** 166
 - **No silent architectural changes.** The architecture may not be altered without a numbered decision.
-- **Any implementation conflict must result in a new numbered decision.** If a spike or implementation step shows an existing decision is wrong or impossible, work stops, the conflict is written down, and a new proposal (165 and up) is raised and approved before anything changes.
+- **Any implementation conflict must result in a new numbered decision.** If a spike or implementation step shows an existing decision is wrong or impossible, work stops, the conflict is written down, and a new proposal (166 and up; number 165 is already used by the proposal recorded above) is raised and approved before anything changes.
 - **Existing decisions remain authoritative until explicitly superseded** by a later numbered decision, and the supersession is recorded in both entries.

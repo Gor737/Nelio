@@ -396,7 +396,7 @@ Table order is not module order (Layer-0 modules own tables that reference highe
 | **G4** (3) | `Enrollment`, `Invitation`, `LessonCompletion` | Same-course composite FKs |
 | **G5** (5) | `Conversation`, `DirectConversation`, `ConversationMember`, `Message`, `Report` | Order inside G5: `ConversationMember` → `Message` → `Report` |
 
-Migration workflow: change the Prisma schema, create the migration with `--create-only`, append hand-written SQL (CHECKs, partial indexes, trigger, `tsvector`), read the generated SQL for unexpected `DROP INDEX`, apply. Every hand-written object is covered by a real-PostgreSQL test, so a later migration that drops one fails the suite.
+Migration workflow: change the Prisma schema, create the migration with `--create-only`, append hand-written SQL (CHECKs, partial indexes, trigger, `tsvector`), read the generated SQL for unexpected `DROP INDEX`, apply. Spike A (M1) clarified the split: GIN indexes and generated columns (including the `tsvector` column) are also declared in the Prisma schema, otherwise Prisma plans to drop them; CHECKs, partial indexes and the trigger remain hand-written. Operational rules: `roadmap.md`, M5; evidence: `docs/spikes/m1-spike-a-report.md`. Every hand-written object is covered by a real-PostgreSQL test, so a later migration that drops one fails the suite.
 
 ---
 

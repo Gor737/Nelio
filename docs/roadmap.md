@@ -1,6 +1,6 @@
 # Nelio Implementation Roadmap
 
-> **Decision range:** 1–164 (all Decided) · **Next decision number:** 165
+> **Decision range:** 1–164 (all Decided) · **Proposed:** 165 (awaiting owner approval) · **Next decision number:** 166
 > **Status:** Design complete (Phases 1–10 closed). Implementation starts at M0.
 
 ---
@@ -94,7 +94,7 @@ Decisions 1–164 are fixed. If a spike or implementation step shows a decision 
 
 1. [ ] **Stop** work on the affected item.
 2. [ ] **Write the conflict down** (what the decision says, what was found, evidence).
-3. [ ] **Raise it as a new numbered proposal** (165 and up) with options, trade-offs and a recommendation.
+3. [ ] **Raise it as a new numbered proposal** (166 and up; 165 is already used by the proposal in the decision log) with options, trade-offs and a recommendation.
 4. [ ] **Wait for approval** before changing anything.
 5. [ ] Record the outcome in the decision log; update affected milestones.
 
@@ -131,7 +131,7 @@ Each milestone requires the one before it.
 **Requires:** nothing · **Unblocks:** M1
 
 - [ ] NestJS project, strict TypeScript, Prisma (current versions at start time)
-- [ ] Docker Compose: PostgreSQL (deployment major version), Mailpit (MinIO is added in M9a with the Files module)
+- [ ] Docker Compose: PostgreSQL 18+ (*proposed minimum, pending owner approval of Decision 165; Compose and CI already use `postgres:18.6`*), Mailpit (MinIO is added in M9a with the Files module)
 - [ ] Integration test runner using a real database; connection pool larger than 1 for concurrency tests
 - [ ] CI running the tests
 
@@ -145,8 +145,9 @@ Each milestone requires the one before it.
 Work in a throwaway branch/repo; produce a one-page **Spike A report**.
 
 - [ ] Current Prisma setup: generator, driver adapter requirement, multi-file schema (decision 101)
-- [ ] UUID v7: database-generated or application-generated (and which library)
-- [ ] `--create-only` migration with hand-added partial unique index, CHECK, generated `tsvector` column and trigger; generate the next migration and confirm Prisma does not drop/alter them; shadow database behavior with `pg_trgm`
+- [ ] UUID v7: database-generated or application-generated (and which library) — *Spike A recommends database-generated `uuidv7()` on PostgreSQL 18+; proposed as Decision 165, pending owner approval*
+- [ ] `--create-only` migration with hand-added partial unique index, CHECK, generated `tsvector` column and trigger; generate the next migration and check what Prisma drops or alters. *Spike A finding:* GIN indexes and generated columns must be declared in the Prisma schema (`type: Gin`, `ops: raw(...)`, `dbgenerated(...)` with the exact text from `prisma db pull --print`), otherwise Prisma plans `DROP INDEX`, `DROP COLUMN` or an invalid `ALTER COLUMN ... DROP DEFAULT`; CHECK constraints, triggers and partial indexes stay hand-written SQL and are left alone by Prisma (declaring a partial index in the schema is a preview feature and is not used)
+- [ ] Verify `pg_trgm` creation during shadow-database replay (the migration must `CREATE EXTENSION` itself), migration-history replay on an empty database, and schema-drift checks (`prisma migrate diff ... --exit-code`) against both the migration history and the live database
 - [ ] Composite FKs (`Lesson→Section`, `Message→ConversationMember`, `LessonCompletion→Enrollment/Lesson`) with referential actions and `(id, course_id)` unique targets
 - [ ] Exact errors received for unique, FK, **CHECK**, deadlock and raw-query failures; reliable access to PostgreSQL error codes
 - [ ] Interactive transactions: default timeout/wait limits, throw behavior, return-value-commit-then-throw pattern (refresh-reuse)
@@ -227,6 +228,13 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M4 · **Unblocks:** M6
 
+**Migration rules (operational, from Spike A; apply to M5 and to every later schema milestone, M7 included; not a numbered decision):**
+- Review the generated SQL of every `--create-only` migration before applying; look for unintended `DROP INDEX`, `DROP COLUMN` and `ALTER COLUMN ... DROP DEFAULT`.
+- Declare GIN indexes and generated columns in the Prisma schema; keep CHECK constraints, triggers and partial indexes as hand-written SQL (Prisma does not natively express them).
+- Replay all migrations against a clean shadow database, and check for unintended schema drift against the migration history and the live database.
+- Create `pg_trgm` inside a migration (`CREATE EXTENSION IF NOT EXISTS pg_trgm`) before any `gin_trgm_ops` index; the shadow database starts empty.
+- Put PostgreSQL enum `ALTER TYPE ... ADD VALUE` in a separate migration from any migration that uses the new value.
+
 **Schema (`--create-only`, hand-written SQL appended, decision 102):**
 - [ ] Enums, `pg_trgm` extension, G1 tables with later-added columns: `User.email_verified_at`, `User.tokens_valid_after`, `UserRole.application_message`/`decision_note`, `RefreshToken.used_at`/`family_started_at`
 - [ ] `User ↔ FileAsset` circular reference created in one migration
@@ -284,7 +292,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 ## M7 — Schema groups 2–5 and full constraint suite
 
-**Requires:** M6 · **Unblocks:** M8. Complete each group with its tests before the next.
+**Requires:** M6 · **Unblocks:** M8. Complete each group with its tests before the next. Follow the migration rules listed under M5.
 
 ### G2 — Category, Tag, Course, CourseTeacher, CourseTag, Notification
 - [ ] Course CHECKs: published needs category + summary; non-draft needs `first_published_at`; `locked_by_admin_at IS NULL OR status = 'ARCHIVED'`
@@ -543,5 +551,6 @@ Use real parallel connections and a helper that holds a transaction open while a
 ## 8. Decision Status
 
 - **Decided:** 1–164
-- **Open decisions:** none
-- **Next decision number:** **165**
+- **Open design questions:** none (this does not cover Decision 165, which is a pending proposal, listed next)
+- **Proposed, awaiting owner approval:** 165 (PostgreSQL 18+ and database-generated `uuidv7()`)
+- **Next decision number:** **166**
