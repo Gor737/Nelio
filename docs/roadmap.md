@@ -196,20 +196,25 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M2 · **Unblocks:** M4 (decision 104)
 
-- [ ] Folder structure per decision 115: `infrastructure/{database,config,audit,mail,events,realtime}`, `common/…`, 12 module folders each with module file, empty `index.ts`, `controllers/ services/ dto/ mappers/ queries/`
-- [ ] Rule: no cycles anywhere
-- [ ] Rule: domain → domain downward only (Layers 0–3), only via the other module's `index.ts`
-- [ ] Rule: domain → infrastructure/common from an explicit per-module allow-list (`mail` only Auth; `realtime` only Chat and Notifications; `audit` only modules writing audited actions)
-- [ ] Rule: infrastructure and `common` never import a domain module
-- [ ] Rule: gateways and controllers never import the database service
-- [ ] CI text search failing on `forwardRef`
-- [ ] CI runs the checker and fails the build on violations
+- [x] Folder structure per decision 115: `infrastructure/{database,config,audit,mail,events,realtime}`, `common/…`, 12 module folders each with module file, empty `index.ts`, `controllers/ services/ dto/ mappers/ queries/`
+- [x] Rule: no cycles anywhere
+- [x] Rule: domain → domain downward only (Layers 0–3), only via the other module's `index.ts`
+- [x] Rule: domain → infrastructure/common from an explicit per-module allow-list (`mail` only Auth; `realtime` only Chat and Notifications; `audit` only modules writing audited actions)
+- [x] Rule: infrastructure and `common` never import a domain module
+- [x] Rule: gateways and controllers never import the database service
+- [x] CI text search failing on `forwardRef`
+- [ ] CI runs the checker and fails the build on violations *(step `npm run check:architecture` added to `.github/workflows/ci.yml` and the same command is green/red locally; confirmed on the first GitHub run, which needs a push)*
 
 **Rule tests:**
-- [ ] Deliberately violating fixture per rule; checker fails on each
-- [ ] Fixture importing another module's internal file (not `index.ts`) fails
+- [x] Deliberately violating fixture per rule; checker fails on each
+- [x] Fixture importing another module's internal file (not `index.ts`) fails
 
 **Exit:** green on the empty skeleton, red on each fixture.
+
+**Exit status (2026-10-25):**
+- [x] Green on the empty skeleton (44 modules, 65 dependencies) and red on a fixture for each of the 13 rules; `allowed-imports` fixture (every import the architecture allows) is green, so the rules are not stricter than the architecture. `apps/backend/.dependency-cruiser.cjs`, `apps/backend/test/architecture/`.
+- Recorded choices where the documents are silent: each module's `index.ts` exports its Nest module class (the only public API for now, needed for `AppModule` wiring) instead of being empty; the `audit` allow-list is `users, courses, enrollments, chat, moderation, admin` (derived from M10-M12 audited actions; extend only with a documented audited action); layering is "any lower layer", not the exact edges of the architecture diagram; `app.controller`/`app.service` (scaffold) stay until the health endpoint replaces them in M6; the scaffold e2e config was made ESM-compatible so `npm run test:e2e` runs and is now a CI step.
+- Open: the CI item above, until the first GitHub run.
 
 ---
 

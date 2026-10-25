@@ -37,5 +37,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npx tsc --noEmit -p tsconfig.build.json
+      - run: npm run check:architecture
       - run: npm test
+      - run: npm run test:e2e
       - run: npm run test:integration

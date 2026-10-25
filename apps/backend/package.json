@@ -20,7 +20,10 @@
     "test:cov": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage",
     "test:debug": "node --inspect-brk --experimental-vm-modules -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:integration": "node --env-file-if-exists=../../.env --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-integration.json --runInBand",
-    "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json"
+    "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
+    "check:deps": "depcruise src --config .dependency-cruiser.cjs",
+    "check:forward-ref": "node scripts/check-forward-ref.mjs src",
+    "check:architecture": "npm run check:deps && npm run check:forward-ref"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -39,6 +42,7 @@
     "@types/node": "^24.0.0",
     "@types/pg": "8.23.1",
     "@types/supertest": "^7.0.0",
+    "dependency-cruiser": "18.7.0",
     "jest": "^30.0.0",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",
