@@ -9,7 +9,13 @@ Real-PostgreSQL tests for constraints, locks and (later) services. No mocks of t
 | `integration/*.integration-spec.ts` | Tests that run against a real database built from the migrations. Config: `jest-integration.json`. |
 | `support/test-database.mjs` | Builds `nelio_test` from `prisma/migrations/*/migration.sql` (drop, create, apply in order). Used by Jest `globalSetup`. |
 | `support/database.ts` | `createPool()` (default 10 connections, so concurrency tests work), `resetData()` (truncate every table between tests). |
-| `support/factories.ts` | Direct-`INSERT` factories: `createUser`, `createUserWithRoles`, `createAdmin`, `createTeacher`, `createFile`, `createRefreshToken`, `createAuditEntry`. Later milestones add courses, enrollments, conversations. |
+| `support/factories.ts` | Direct-`INSERT` factories for G1: `createUser`, `createUserWithRoles`, `createAdmin`, `createTeacher`, `createFile`, `createRefreshToken`, `createAuditEntry`. |
+| `support/factories-courses.ts` | G2: `createCategory`, `createTag`, `createCourse` (any state, valid or not), `createPublishedCourse`, `addCourseTeacher`, `createNotification`. |
+| `support/factories-content.ts` | G3: `createSection`, `createLesson`, `createBlock` (exactly the columns given) and the typed block helpers, `createCourseTree`. |
+| `support/factories-learning.ts` | G4: `createEnrollment`, `createInvitation`, `createCompletion` (explicit `course_id`, so cross-course rows can be tried). |
+| `support/factories-chat.ts` | G5: conversations (`createDirectConversation`, `createGroup`, `createChannel`), `addMember`, `createMessage`, `createReport` / `reportMessage` / `reportUser`. |
+| `integration/g1…g5-constraints.integration-spec.ts` | One file per schema group: every hand-written object has a test that tries to break it. |
+| `integration/schema-suite.integration-spec.ts` | Whole schema: exact inventory (tables, enums, CHECKs, partial indexes, other indexes), FK actions vs Decision 91, SQL limits vs `TEXT_LIMITS`, replay + drift across all migrations. A new object must be added to its lists in the same commit as the migration. |
 | `support/token-minter.ts` | `mintAccessToken(userId)`: a real HS256 access token (subject only, 15 minutes) signed with `JWT_SECRET` (or a fixed 32-byte test secret). `verifyAccessToken` for tests. Never import it from `src/`. |
 | `support/parallel-tx.ts` | Parallel-transaction helper from Spike B: hold a transaction open, start a statement without awaiting it, detect "blocked by" with `pg_blocking_pids`, cancel on release. |
 | `support/sql.ts` | Direct-SQL helper for constraint tests: `sqlError(promise)` returns `{ sqlstate, constraint, message }` and fails if the statement succeeded. |

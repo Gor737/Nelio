@@ -327,37 +327,42 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M6 · **Unblocks:** M8. Complete each group with its tests before the next. Follow the migration rules listed under M5.
 
 ### G2 — Category, Tag, Course, CourseTeacher, CourseTag, Notification
-- [ ] Course CHECKs: published needs category + summary; non-draft needs `first_published_at`; `locked_by_admin_at IS NULL OR status = 'ARCHIVED'`
-- [ ] Generated `search_vector` (`simple` configuration) + GIN index
-- [ ] One-OWNER partial unique index
-- [ ] Indexes: `Course(status, first_published_at DESC)`, `category_id`, `cover_file_id` partial; `CourseTeacher(user_id)`; `CourseTag(tag_id)`; `Notification(user_id, created_at DESC)`, unread partial, `course_id`
-- [ ] Tests: two OWNERs rejected (demote-first succeeds); publish without category rejected; lock on non-archived rejected; category in use can't be deleted; search vector updates on title change
+- [x] Course CHECKs: published needs category + summary; non-draft needs `first_published_at`; `locked_by_admin_at IS NULL OR status = 'ARCHIVED'`
+- [x] Generated `search_vector` (`simple` configuration) + GIN index
+- [x] One-OWNER partial unique index
+- [x] Indexes: `Course(status, first_published_at DESC)`, `category_id`, `cover_file_id` partial; `CourseTeacher(user_id)`; `CourseTag(tag_id)`; `Notification(user_id, created_at DESC)`, unread partial, `course_id`
+- [x] Tests: two OWNERs rejected (demote-first succeeds); publish without category rejected; lock on non-archived rejected; category in use can't be deleted; search vector updates on title change
 
 ### G3 — Section, Lesson, ContentBlock
-- [ ] Unique `(id, course_id)` targets; composite FK `Lesson→Section`
-- [ ] CHECKs: lesson published ⇒ `first_published_at`; block columns match `type`
-- [ ] Indexes: published-lessons-per-course partial; `Section(course_id, position)`; `Lesson(section_id, position)`; `ContentBlock.file_id` unique + child index
-- [ ] Tests: cross-course lesson move rejected; section with lessons can't be deleted; `VIDEO` without provider rejected; `TEXT` with file rejected; one file on two blocks rejected
+- [x] Unique `(id, course_id)` targets; composite FK `Lesson→Section`
+- [x] CHECKs: lesson published ⇒ `first_published_at`; block columns match `type`
+- [x] Indexes: published-lessons-per-course partial; `Section(course_id, position)`; `Lesson(section_id, position)`; `ContentBlock.file_id` unique + child index
+- [x] Tests: cross-course lesson move rejected; section with lessons can't be deleted; `VIDEO` without provider rejected; `TEXT` with file rejected; one file on two blocks rejected
 
 ### G4 — Enrollment, Invitation, LessonCompletion
-- [ ] `Enrollment` unique `(course_id, user_id)` and `(id, course_id)`; decided-pair CHECK; `completed_at ⇒ first_activated_at` CHECK
-- [ ] Indexes: active-and-incomplete partial; `(course_id, status)`, `(user_id, status)`; `last_visited_lesson_id` partial; `Invitation (course_id, invited_user_id)` unique and `(invited_user_id)`; `LessonCompletion (lesson_id, course_id)`
-- [ ] `LessonCompletion` composite PK and two composite FKs sharing `course_id`
-- [ ] Tests: cross-course completion rejected; duplicate enrollment rejected; deleting a completed lesson rejected; deleting a course with enrollment/invitation rejected; lesson delete nulls `last_visited_lesson_id`
+- [x] `Enrollment` unique `(course_id, user_id)` and `(id, course_id)`; decided-pair CHECK; `completed_at ⇒ first_activated_at` CHECK
+- [x] Indexes: active-and-incomplete partial; `(course_id, status)`, `(user_id, status)`; `last_visited_lesson_id` partial; `Invitation (course_id, invited_user_id)` unique and `(invited_user_id)`; `LessonCompletion (lesson_id, course_id)`
+- [x] `LessonCompletion` composite PK and two composite FKs sharing `course_id`
+- [x] Tests: cross-course completion rejected; duplicate enrollment rejected; deleting a completed lesson rejected; deleting a course with enrollment/invitation rejected; lesson delete nulls `last_visited_lesson_id`
 
 ### G5 — Conversation, DirectConversation, ConversationMember, Message, Report
-- [ ] Conversation type/`course_id`/title CHECK; unique `course_id`; `DirectConversation` `a < b` CHECK + unique pair
-- [ ] `ConversationMember` active-members partial index
-- [ ] `Message`: unique `(conversation_id, seq)` and `(sender_id, client_id)`; body-length and deleted-pair CHECKs; composite FK to `ConversationMember`
-- [ ] `Report`: exactly-one-target CHECK; two open-report partial unique indexes; `(status, created_at)`, `(message_id)`, `(target_user_id)`
-- [ ] Order inside G5: `ConversationMember` → `Message` → `Report`
-- [ ] Tests: second channel for a course rejected; DM `(B,A)` rejected; message from never-member rejected; duplicate `seq` rejected; two-target report rejected; duplicate open report rejected (new one after resolution accepted); deleting a reported message rejected; deleting a course with a channel rejected
+- [x] Conversation type/`course_id`/title CHECK; unique `course_id`; `DirectConversation` `a < b` CHECK + unique pair
+- [x] `ConversationMember` active-members partial index
+- [x] `Message`: unique `(conversation_id, seq)` and `(sender_id, client_id)`; body-length and deleted-pair CHECKs; composite FK to `ConversationMember`
+- [x] `Report`: exactly-one-target CHECK; two open-report partial unique indexes; `(status, created_at)`, `(message_id)`, `(target_user_id)`
+- [x] Order inside G5: `ConversationMember` → `Message` → `Report`
+- [x] Tests: second channel for a course rejected; DM `(B,A)` rejected; message from never-member rejected; duplicate `seq` rejected; two-target report rejected; duplicate open report rejected (new one after resolution accepted); deleting a reported message rejected; deleting a course with a channel rejected
 
 ### Whole-suite checks
-- [ ] Replay + drift test across all migrations
-- [ ] SQL limits match M4 constants
-- [ ] FK actions read from the DB catalog match the decision 91 delete-behavior table
-- [ ] Every partial index and constraint from the Phase 10 index/constraint list exists
+- [x] Replay + drift test across all migrations
+- [x] SQL limits match M4 constants
+- [x] FK actions read from the DB catalog match the decision 91 delete-behavior table
+- [x] Every partial index and constraint from the Phase 10 index/constraint list exists
+
+**Status (2026-10-26):** implemented in `apps/backend/prisma/schema/` (`catalog`, `courses`, `notifications`, `content`, `enrollments`, `progress`, `chat`, `moderation`) and six migrations in `apps/backend/prisma/migrations/`: G1 (M5), `g2_catalog_courses_notifications`, `g3_content`, `g4_learning`, `g5_chat_reports`, and `g1_text_limits` (SQL CHECKs for the five G1 columns whose limits were approved in M4 but had no CHECK). All 25 entities exist. Each migration was created with `--create-only`, its generated SQL was read (no unintended `DROP`), the hand-written part was appended, and it was applied to the development database `nelio`; `prisma migrate diff` reports no drift against the migration history (shadow replay) or the live database.
+- Tests (`apps/backend/test/integration/`): `g2`…`g5-constraints` (41, 26, 24, 43 tests) and `schema-suite` (37: exact inventory of tables, enums, CHECKs, partial indexes and other indexes; FK actions vs Decision 91; SQL limits vs `TEXT_LIMITS`; replay + drift across all six migrations). The replay/drift tests moved from the G1 spec into `schema-suite`. Mutation checks on every group (loosening a CHECK, dropping a partial `WHERE`, changing an FK action, a unique index, or a constant) make 4-6 tests fail each.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 11 (**pending owner review**): conversation shape and untitled channels, `client_id` as `uuid`, `updated_at` rule, no default for `enrollment_policy`, `search_vector` over title + summary + description, `video_external_id` 1-64, the `content_blocks (lesson_id, position)` index, snapshot `jsonb`, G1 limit CHECKs.
+- Not enforced by the database on purpose (service layer, architecture section 9): a DM has exactly two members and a pair row; the sender is an active member; the lesson is published and the enrollment active at completion; `last_visited_lesson_id` belongs to the same course; teacher/student exclusion; no return to `DRAFT` once enrollments exist.
 
 **Exit:** full constraint suite green. Schema frozen except via new migration under the Change Protocol.
 

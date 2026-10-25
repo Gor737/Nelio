@@ -41,16 +41,35 @@ model User {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  avatarFile     FileAsset?     @relation("UserAvatar", fields: [avatarFileId], references: [id], onDelete: Restrict)
-  uploadedFiles  FileAsset[]    @relation("FileUploader")
-  roles          UserRole[]     @relation("RoleOwner")
-  decidedRoles   UserRole[]     @relation("RoleDecider")
-  refreshTokens  RefreshToken[]
-  authIdentities AuthIdentity[]
-  emailTokens    EmailToken[]
-  auditLogs      AuditLog[]
-  blocksMade     Block[]        @relation("Blocker")
-  blocksReceived Block[]        @relation("Blocked")
+  avatarFile           FileAsset?           @relation("UserAvatar", fields: [avatarFileId], references: [id], onDelete: Restrict)
+  uploadedFiles        FileAsset[]          @relation("FileUploader")
+  roles                UserRole[]           @relation("RoleOwner")
+  decidedRoles         UserRole[]           @relation("RoleDecider")
+  refreshTokens        RefreshToken[]
+  authIdentities       AuthIdentity[]
+  emailTokens          EmailToken[]
+  auditLogs            AuditLog[]
+  blocksMade           Block[]              @relation("Blocker")
+  blocksReceived       Block[]              @relation("Blocked")
+  // G2
+  teacherOf            CourseTeacher[]      @relation("TeacherUser")
+  teachersAdded        CourseTeacher[]      @relation("TeacherAdder")
+  notifications        Notification[]       @relation("NotificationRecipient")
+  notificationsAsActor Notification[]       @relation("NotificationActor")
+  // G4
+  enrollments          Enrollment[]         @relation("EnrollmentStudent")
+  enrollmentsDecided   Enrollment[]         @relation("EnrollmentDecider")
+  invitationsReceived  Invitation[]         @relation("InvitationInvitee")
+  invitationsSent      Invitation[]         @relation("InvitationInviter")
+  // G5
+  conversationsCreated Conversation[]       @relation("ConversationCreator")
+  directAsA            DirectConversation[] @relation("DirectUserA")
+  directAsB            DirectConversation[] @relation("DirectUserB")
+  memberships          ConversationMember[] @relation("ConversationMemberUser")
+  messagesDeleted      Message[]            @relation("MessageDeleter")
+  reportsFiled         Report[]             @relation("ReportReporter")
+  reportsAgainst       Report[]             @relation("ReportTarget")
+  reportsReviewed      Report[]             @relation("ReportReviewer")
 
   // Trigram search on the full name (user search). pg_trgm is created at the top of the G1 migration.
   @@index([fullName(ops: raw("gin_trgm_ops"))], map: "users_full_name_trgm_idx", type: Gin)

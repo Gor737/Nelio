@@ -1,10 +1,5 @@
 // M5 constraint tests for schema group G1 (users, auth, files, audit, blocks) against a real PostgreSQL database built
 // from the migration files. Every hand-written object (Decision 102) has a test here that tries to break it.
-import { execFile } from 'node:child_process';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
-import pg from 'pg';
 import { TIME_LIMITS } from '../../src/common/constants/limits.js';
 import { createPool, resetData } from '../support/database.js';
 import {
@@ -22,17 +17,8 @@ import {
   sleep,
   startStatement,
 } from '../support/parallel-tx.js';
-import { schemaFingerprint } from '../support/schema-fingerprint.js';
 import { SQLSTATE, sqlError } from '../support/sql.js';
-import {
-  TEST_SHADOW_DATABASE,
-  buildDatabaseNamed,
-  testDatabaseUrl,
-  testShadowDatabaseUrl,
-} from '../support/test-database.mjs';
 
-const run = promisify(execFile);
-const backendDir = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const DAY_MS = 24 * 3600 * 1000;
 
 describe('G1 schema (real PostgreSQL, built from migrations)', () => {
@@ -49,33 +35,37 @@ describe('G1 schema (real PostgreSQL, built from migrations)', () => {
   // ---- what the migrations built -------------------------------------------------------------------------------------
 
   describe('structure', () => {
-    it('has exactly the 8 G1 tables, the enums and the pg_trgm extension', async () => {
+    it('has the 8 G1 tables, the G1 enums and the pg_trgm extension (the whole-schema inventory is in schema-suite)', async () => {
       expect(
         await names(
           "SELECT tablename AS n FROM pg_tables WHERE schemaname = 'public'",
         ),
-      ).toEqual([
-        'audit_logs',
-        'auth_identities',
-        'blocks',
-        'email_tokens',
-        'file_assets',
-        'refresh_tokens',
-        'user_roles',
-        'users',
-      ]);
+      ).toEqual(
+        expect.arrayContaining([
+          'audit_logs',
+          'auth_identities',
+          'blocks',
+          'email_tokens',
+          'file_assets',
+          'refresh_tokens',
+          'user_roles',
+          'users',
+        ]),
+      );
       expect(
         await names(
           "SELECT typname AS n FROM pg_type WHERE typtype = 'e' AND typnamespace = 'public'::regnamespace",
         ),
-      ).toEqual([
-        'auth_provider',
-        'email_token_type',
-        'file_kind',
-        'platform_role',
-        'role_status',
-        'user_status',
-      ]);
+      ).toEqual(
+        expect.arrayContaining([
+          'auth_provider',
+          'email_token_type',
+          'file_kind',
+          'platform_role',
+          'role_status',
+          'user_status',
+        ]),
+      );
       expect(await names('SELECT extname AS n FROM pg_extension')).toContain(
         'pg_trgm',
       );
@@ -89,14 +79,16 @@ describe('G1 schema (real PostgreSQL, built from migrations)', () => {
         `SELECT table_name, column_default FROM information_schema.columns
           WHERE table_schema = 'public' AND column_name = 'id' AND data_type = 'uuid' ORDER BY table_name`,
       );
-      expect(columns.rows.map((c) => c.table_name)).toEqual([
-        'audit_logs',
-        'auth_identities',
-        'email_tokens',
-        'file_assets',
-        'refresh_tokens',
-        'users',
-      ]);
+      expect(columns.rows.map((c) => c.table_name)).toEqual(
+        expect.arrayContaining([
+          'audit_logs',
+          'auth_identities',
+          'email_tokens',
+          'file_assets',
+          'refresh_tokens',
+          'users',
+        ]),
+      );
       for (const column of columns.rows)
         expect(column.column_default).toBe('uuidv7()');
 
@@ -143,12 +135,24 @@ describe('G1 schema (real PostgreSQL, built from migrations)', () => {
       }
     });
 
-    it('foreign-key delete actions match the architecture table: CASCADE for credentials and blocks, RESTRICT for everything else', async () => {
+    it('G1 foreign-key delete actions match the architecture table: CASCADE for credentials and blocks, RESTRICT for everything else (the whole schema is checked in schema-suite)', async () => {
       const { rows } = await pool.query<{
         conname: string;
         confdeltype: string;
       }>(
-        "SELECT conname, confdeltype::text FROM pg_constraint WHERE contype = 'f' AND connamespace = 'public'::regnamespace ORDER BY conname",
+        "SELECT conname, confdeltype::text FROM pg_constraint WHERE contype = 'f' AND connamespace = 'public'::regnamespace AND conrelid::regclass::text = ANY($1) ORDER BY conname",
+        [
+          [
+            'audit_logs',
+            'auth_identities',
+            'blocks',
+            'email_tokens',
+            'file_assets',
+            'refresh_tokens',
+            'user_roles',
+            'users',
+          ],
+        ],
       );
       expect(
         Object.fromEntries(rows.map((r) => [r.conname, r.confdeltype])),
@@ -636,70 +640,5 @@ describe('G1 schema (real PostgreSQL, built from migrations)', () => {
       );
       expect(rows[0].n).toBe(1);
     });
-  });
-
-  // ---- replay and drift ----------------------------------------------------------------------------------------------
-
-  describe('migration replay and drift', () => {
-    const prisma = join(backendDir, 'node_modules/prisma/build/index.js');
-    const prismaDiff = (args: string[], databaseUrl: string) =>
-      run(
-        process.execPath,
-        [prisma, 'migrate', 'diff', ...args, '--script', '--exit-code'],
-        {
-          cwd: backendDir,
-          env: { ...process.env, DATABASE_URL: databaseUrl },
-        },
-      );
-
-    it('replaying all migrations on a fresh database gives exactly the schema of the test database', async () => {
-      const original = await schemaFingerprint(pool);
-      await buildDatabaseNamed(TEST_SHADOW_DATABASE); // drops and recreates the shadow database, then applies every migration
-      const replay = new pg.Pool({
-        connectionString: testShadowDatabaseUrl(),
-        max: 2,
-      });
-      try {
-        expect(await schemaFingerprint(replay)).toEqual(original);
-        expect(original.length).toBeGreaterThan(100);
-      } finally {
-        await replay.end();
-      }
-    }, 60_000);
-
-    it('Prisma reports no drift between the migration history and prisma/schema (shadow-database replay)', async () => {
-      const { stdout } = await prismaDiff(
-        [
-          '--from-migrations',
-          'prisma/migrations',
-          '--to-schema',
-          'prisma/schema',
-        ],
-        testDatabaseUrl(),
-      );
-      expect(stdout).toContain('This is an empty migration');
-    }, 60_000);
-
-    it('Prisma reports no drift between the live test database and prisma/schema', async () => {
-      const { stdout } = await prismaDiff(
-        ['--from-config-datasource', '--to-schema', 'prisma/schema'],
-        testDatabaseUrl(),
-      );
-      expect(stdout).toContain('This is an empty migration');
-    }, 60_000);
-
-    it('drift detection is not blind: an extra column in the live database makes the check fail', async () => {
-      await pool.query('ALTER TABLE users ADD COLUMN drift_probe integer');
-      try {
-        await expect(
-          prismaDiff(
-            ['--from-config-datasource', '--to-schema', 'prisma/schema'],
-            testDatabaseUrl(),
-          ),
-        ).rejects.toMatchObject({ code: 2 });
-      } finally {
-        await pool.query('ALTER TABLE users DROP COLUMN drift_probe');
-      }
-    }, 60_000);
   });
 });

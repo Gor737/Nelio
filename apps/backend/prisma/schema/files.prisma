@@ -20,8 +20,10 @@ model FileAsset {
   sizeBytes    BigInt   @map("size_bytes")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  uploader     User   @relation("FileUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
-  avatarOfUser User[] @relation("UserAvatar")
+  uploader       User          @relation("FileUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  avatarOfUser   User[]        @relation("UserAvatar")
+  coverOfCourses Course[]      @relation("CourseCover")
+  contentBlock   ContentBlock?
 
   @@map("file_assets")
 }

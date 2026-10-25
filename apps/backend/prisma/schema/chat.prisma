@@ -1,0 +1,102 @@
+// Chat module: Conversation, DirectConversation, ConversationMember, Message. Schema group G5 (docs/architecture.md
+// sections 8-10, Decisions 81 and 91). Order inside G5: ConversationMember -> Message -> Report (Report is in moderation.prisma).
+// Delete behavior (section 8): Message -> Conversation, Conversation -> Course and Message -> ConversationMember are RESTRICT
+// (a conversation with messages, and a member who sent messages, cannot be deleted; a member who leaves keeps the row with
+// left_at); DirectConversation and ConversationMember -> Conversation are CASCADE; every reference to User is RESTRICT.
+// Message ordering: seq is taken from Conversation.last_seq under a short row lock (Decision 81); unique (conversation_id, seq).
+// Idempotency: unique (sender_id, client_id). A message is soft-deleted (deleted_at/deleted_by) and its text is kept.
+// Hand-written SQL in the G5 migration (not expressible here):
+//   CHECK conversations_type_shape, conversations_last_seq_nonneg, conversations_title_length (TEXT_LIMITS.GROUP_TITLE),
+//   CHECK direct_conversations_ordered_pair (user_a_id < user_b_id),
+//   CHECK messages_body_length (TEXT_LIMITS.MESSAGE_BODY), messages_deleted_pair,
+//   partial index conversation_members_active_user_idx.
+// Rules the database cannot enforce (service layer): a DIRECT conversation has exactly two members and a row in
+// direct_conversations; the sender is an active member at send time; group cap 50; last-admin promotion.
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  COURSE_CHANNEL
+
+  @@map("conversation_type")
+}
+
+enum ConversationMemberRole {
+  MEMBER
+  ADMIN
+
+  @@map("conversation_member_role")
+}
+
+model Conversation {
+  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  type          ConversationType
+  title         String?
+  courseId      String?          @unique @map("course_id") @db.Uuid
+  createdBy     String?          @map("created_by") @db.Uuid
+  lastSeq       Int              @default(0) @map("last_seq")
+  lastMessageAt DateTime?        @map("last_message_at") @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course   Course?              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  creator  User?                @relation("ConversationCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  direct   DirectConversation?
+  members  ConversationMember[]
+  messages Message[]
+
+  @@map("conversations")
+}
+
+model DirectConversation {
+  conversationId String   @id @map("conversation_id") @db.Uuid
+  userAId        String   @map("user_a_id") @db.Uuid
+  userBId        String   @map("user_b_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userA        User         @relation("DirectUserA", fields: [userAId], references: [id], onDelete: Restrict)
+  userB        User         @relation("DirectUserB", fields: [userBId], references: [id], onDelete: Restrict)
+
+  @@unique([userAId, userBId])
+  @@map("direct_conversations")
+}
+
+model ConversationMember {
+  conversationId String                 @map("conversation_id") @db.Uuid
+  userId         String                 @map("user_id") @db.Uuid
+  role           ConversationMemberRole @default(MEMBER)
+  joinedAt       DateTime               @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt         DateTime?              @map("left_at") @db.Timestamptz(6)
+  lastReadSeq    Int                    @default(0) @map("last_read_seq")
+  isMuted        Boolean                @default(false) @map("is_muted")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation("ConversationMemberUser", fields: [userId], references: [id], onDelete: Restrict)
+  messages     Message[]
+
+  @@id([conversationId, userId])
+  @@map("conversation_members")
+}
+
+model Message {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  seq            Int
+  senderId       String    @map("sender_id") @db.Uuid
+  body           String
+  clientId       String    @map("client_id") @db.Uuid
+  editedAt       DateTime? @map("edited_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy      String?   @map("deleted_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation Conversation       @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  sender       ConversationMember @relation(fields: [conversationId, senderId], references: [conversationId, userId], onDelete: Restrict)
+  deleter      User?              @relation("MessageDeleter", fields: [deletedBy], references: [id], onDelete: Restrict)
+  reports      Report[]
+
+  @@unique([conversationId, seq])
+  @@unique([senderId, clientId])
+  @@map("messages")
+}

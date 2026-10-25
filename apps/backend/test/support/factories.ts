@@ -7,7 +7,7 @@ export type PlatformRoleName = 'STUDENT' | 'TEACHER' | 'ADMIN';
 export type RoleStatusName = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'REVOKED';
 
 let counter = 0;
-const unique = () =>
+export const unique = () =>
   `${Date.now().toString(36)}${(counter++).toString(36)}${randomBytes(3).toString('hex')}`;
 
 export interface UserRow {

@@ -1,0 +1,41 @@
+// Catalog module: Category, Tag, CourseTag. Schema group G2 (docs/architecture.md sections 9 and 10).
+// Delete behavior (section 8): Course -> Category is RESTRICT (a category in use cannot be deleted); CourseTag is a plain
+// join table, CASCADE from both Course and Tag.
+// Hand-written SQL in the G2 migration: length CHECKs categories_name_length (TEXT_LIMITS.CATEGORY_NAME) and
+// tags_name_length (TEXT_LIMITS.TAG_NAME).
+
+model Category {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  courses Course[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  courseTags CourseTag[]
+
+  @@map("tags")
+}
+
+model CourseTag {
+  courseId  String   @map("course_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, tagId])
+  @@index([tagId])
+  @@map("course_tags")
+}
