@@ -169,21 +169,26 @@ Work in a throwaway branch/repo; produce a one-page **Spike A report**.
 **Requires:** M1 · **Unblocks:** M3
 Use real parallel connections and a helper that holds a transaction open while another runs.
 
-- [ ] Two `FOR SHARE` holders coexist (Course-S ∥ Course-S)
-- [ ] `FOR NO KEY UPDATE` conflicts with share holders both ways (Course-X vs Course-S)
-- [ ] Child-table `INSERT` (Enrollment → Course) is **not** blocked by `FOR NO KEY UPDATE`
-- [ ] `UPDATE conversation SET last_seq = last_seq + 1` does not block inserting a `ConversationMember`
-- [ ] After a lock wait, the next statement sees the other transaction's committed data (Rule 1)
-- [ ] A unique violation aborts the rest of the transaction
-- [ ] Parallel conditional updates: exactly one reports 1 row
-- [ ] Deliberate deadlock detected; error code is the one the retry helper handles
-- [ ] Advisory transaction lock serializes two "count Admins, then demote" transactions
-- [ ] One-Owner partial unique index fails on promote-first, passes on demote-first
-- [ ] Duplicate `client_id` insert rolls back the `last_seq` increment (no `seq` gap)
-- [ ] `INSERT … ON CONFLICT DO NOTHING` under concurrency (tags, completions, blocks)
-- [ ] Finish designs (on paper) of `runInTransaction` and `lockRow`
+- [x] Two `FOR SHARE` holders coexist (Course-S ∥ Course-S)
+- [x] `FOR NO KEY UPDATE` conflicts with share holders both ways (Course-X vs Course-S)
+- [x] Child-table `INSERT` (Enrollment → Course) is **not** blocked by `FOR NO KEY UPDATE`
+- [x] `UPDATE conversation SET last_seq = last_seq + 1` does not block inserting a `ConversationMember`
+- [x] After a lock wait, the next statement sees the other transaction's committed data (Rule 1)
+- [x] A unique violation aborts the rest of the transaction
+- [x] Parallel conditional updates: exactly one reports 1 row
+- [x] Deliberate deadlock detected; error code is the one the retry helper handles
+- [x] Advisory transaction lock serializes two "count Admins, then demote" transactions
+- [x] One-Owner partial unique index fails on promote-first, passes on demote-first
+- [x] Duplicate `client_id` insert rolls back the `last_seq` increment (no `seq` gap)
+- [x] `INSERT … ON CONFLICT DO NOTHING` under concurrency (tags, completions, blocks)
+- [x] Finish designs (on paper) of `runInTransaction` and `lockRow`
 
 **Exit:** every claim confirmed (Spike B report). Any failed claim amends decisions 159/160 via the Change Protocol **before** M3. Tests proving permanent guarantees move into the real concurrency suite.
+
+**Exit status (2026-10-25):**
+- [x] Every claim confirmed: 13 of 13, plus the owner-approved extras (Course DELETE vs Enrollment INSERT, lock order, report resolution); `docs/spikes/m2-spike-b-report.md`, 70/70 spike tests on three consecutive runs.
+- [x] No claim failed, so Decisions 159/160 are not amended and no Change Protocol entry is needed before M3.
+- Carried forward, not part of M2: the permanent-guarantee tests listed in report section 5 move into the real concurrency suite in M5, M7 and M13; the `runInTransaction` and `lockRow` designs (report section 3) are built in M6.
 
 ---
 
