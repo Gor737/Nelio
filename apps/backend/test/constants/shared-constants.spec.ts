@@ -53,7 +53,9 @@ describe('error codes', () => {
     expect(statusesOf('COURSE_ADMIN_LOCKED')).toEqual([403, 409]);
     for (const code of codes) {
       for (const status of statusesOf(code))
-        expect([400, 401, 403, 404, 409, 413, 415, 429, 500]).toContain(status);
+        expect([400, 401, 403, 404, 409, 413, 415, 429, 500, 503]).toContain(
+          status,
+        );
     }
   });
 
@@ -100,7 +102,11 @@ describe('error codes', () => {
     const derived = codes.filter(
       (c) => ERROR_CODES[c].source === 'approved-derived',
     );
-    expect(documented.length + derived.length).toBe(codes.length);
+    const proposed = codes.filter((c) => ERROR_CODES[c].source === 'proposed');
+    expect(documented.length + derived.length + proposed.length).toBe(
+      codes.length,
+    );
+    expect(proposed).toEqual(['SERVICE_UNAVAILABLE']); // added in M6, listed in docs/proposed-defaults.md "Added in M6"
     expect(documented.length).toBeGreaterThan(10);
     expect(derived.length).toBeGreaterThan(0);
   });

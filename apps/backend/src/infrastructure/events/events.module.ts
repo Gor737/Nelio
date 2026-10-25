@@ -1,4 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
+import { EventBus } from './event-bus.js';
 
-@Module({})
+@Global()
+@Module({ providers: [EventBus], exports: [EventBus] })
 export class EventsModule {}

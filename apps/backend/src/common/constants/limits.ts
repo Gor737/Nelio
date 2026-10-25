@@ -139,3 +139,25 @@ export const FILE_LIMITS: Record<
     source: 'approved-default',
   },
 };
+
+/**
+ * Transaction runner defaults (Spike B report, section 3). PROPOSED in M6 and pending owner review: they are listed in the
+ * "Added in M6" section of docs/proposed-defaults.md. Prisma's own `timeout` only fails the COMMIT and never cancels a
+ * statement, so the PostgreSQL timeouts are what really bound a transaction; the Prisma timeout is kept larger than both.
+ */
+export const TRANSACTION_LIMITS = {
+  /** PostgreSQL statement_timeout for one statement inside a transaction. */
+  STATEMENT_TIMEOUT_MS: 8_000,
+  /** PostgreSQL lock_timeout: how long a statement waits for a lock. */
+  LOCK_TIMEOUT_MS: 5_000,
+  /** Prisma interactive-transaction timeout (greater than both PostgreSQL timeouts). */
+  PRISMA_TIMEOUT_MS: 10_000,
+  /** Prisma wait for a pooled connection. */
+  PRISMA_MAX_WAIT_MS: 5_000,
+  /** Attempts for deadlock (40P01) and serialization failure (40001), the first one included. */
+  MAX_ATTEMPTS: 3,
+  /** Base backoff between attempts, multiplied by the attempt number and jittered. */
+  RETRY_BASE_DELAY_MS: 20,
+  /** Connections in the Prisma/pg pool of the single backend instance. */
+  POOL_MAX: 10,
+} as const;

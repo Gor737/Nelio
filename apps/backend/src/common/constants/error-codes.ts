@@ -11,12 +11,14 @@
  * entries are owner-approved defaults (2026-10-25), listed in docs/proposed-defaults.md.
  * A module adds its own codes here when it implements them (the registry test keeps codes unique with one status).
  */
-export type HttpStatus = 400 | 401 | 403 | 404 | 409 | 413 | 415 | 429 | 500;
+export type HttpStatus =
+  400 | 401 | 403 | 404 | 409 | 413 | 415 | 429 | 500 | 503;
 
 export interface ErrorCodeSpec {
   /** One status, or `[403, 409]` for the single documented two-status code. */
   readonly status: HttpStatus | readonly [HttpStatus, HttpStatus];
-  readonly source: 'documented' | 'approved-derived';
+  /** `proposed` = added by the implementer after the owner's approval round; pending review (docs/proposed-defaults.md, "Added in M6"). */
+  readonly source: 'documented' | 'approved-derived' | 'proposed';
   readonly description: string;
 }
 
@@ -28,6 +30,11 @@ const approvedDerived = (
   status: ErrorCodeSpec['status'],
   description: string,
 ): ErrorCodeSpec => ({ status, source: 'approved-derived', description });
+
+const proposed = (
+  status: ErrorCodeSpec['status'],
+  description: string,
+): ErrorCodeSpec => ({ status, source: 'proposed', description });
 
 export const ERROR_CODES = {
   // --- transport, validation, authentication ---
@@ -169,6 +176,12 @@ export const ERROR_CODES = {
   FILE_IN_USE: approvedDerived(
     409,
     'Deleting a file that is still referenced.',
+  ),
+
+  // --- operations (added in M6; not yet reviewed by the owner) ---
+  SERVICE_UNAVAILABLE: proposed(
+    503,
+    'A dependency the request needs (the database) is not reachable; used by the health endpoint.',
   ),
 } as const satisfies Record<string, ErrorCodeSpec>;
 

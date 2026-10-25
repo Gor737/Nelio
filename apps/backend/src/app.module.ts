@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
+import { GLOBAL_PROVIDERS } from './common/global-providers.js';
+import { HealthModule } from './infrastructure/health/index.js';
 import { AuditModule } from './infrastructure/audit/index.js';
 import { AppConfigModule } from './infrastructure/config/index.js';
 import { DatabaseModule } from './infrastructure/database/index.js';
@@ -23,8 +23,9 @@ import { UsersModule } from './modules/users/index.js';
 @Module({
   imports: [
     // Infrastructure (never imports a domain)
-    AppConfigModule,
+    AppConfigModule.forRoot(),
     DatabaseModule,
+    HealthModule,
     AuditModule,
     MailModule,
     EventsModule,
@@ -46,7 +47,6 @@ import { UsersModule } from './modules/users/index.js';
     // Layer 3
     AdminModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  providers: GLOBAL_PROVIDERS,
 })
 export class AppModule {}

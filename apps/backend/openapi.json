@@ -1,0 +1,175 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "description": "Public. Never returns configuration or connection details.",
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: the database is not reachable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness and database readiness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Nelio API",
+    "description": "Backend API of the Nelio learning platform. All paths are under `/api/v1`.\n\nEvery error has the shape `{ statusCode, code, message, errors? }`; branch on `code`, not on `message`.\nCheck order: 429 -> 401 -> 403 ACCOUNT_SUSPENDED -> guards -> 400 -> 409.\n\nError codes: VALIDATION_FAILED, UNAUTHENTICATED, ACCOUNT_SUSPENDED, FORBIDDEN, TEACHER_NOT_APPROVED, NOT_FOUND, TOO_MANY_REQUESTS, INTERNAL_ERROR, RESOURCE_CONFLICT, INVALID_CURRENT_PASSWORD, TOKEN_INVALID, NO_LOGIN_METHOD_REMAINING, COURSE_ARCHIVED, COURSE_ADMIN_LOCKED, COURSE_ALREADY_LOCKED, COURSE_NOT_LOCKED, INVALID_STATE_TRANSITION, ORDER_MISMATCH, INVITATION_REQUIRED, INVITATION_PENDING, ALREADY_ENROLLED, APPLICATION_PENDING, ALREADY_TEACHER, LAST_PLATFORM_ADMIN, CANNOT_SUSPEND_SELF, CANNOT_BLOCK_SELF, CANNOT_BLOCK_ADMIN, LAST_GROUP_ADMIN, MEMBERS_UNAVAILABLE, CANNOT_MESSAGE_USER, CLIENT_ID_REUSED, REPORT_ALREADY_RESOLVED, FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, FILE_IN_USE, SERVICE_UNAVAILABLE.",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "access-token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Access token (15 minutes) from POST /auth/login."
+      }
+    },
+    "schemas": {
+      "HealthResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ],
+            "example": "ok"
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "up"
+            ],
+            "example": "up",
+            "description": "The database answered `SELECT 1`."
+          }
+        },
+        "required": [
+          "status",
+          "database"
+        ]
+      },
+      "FieldErrorDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "email",
+            "description": "Property path of the invalid field."
+          },
+          "messages": {
+            "example": [
+              "email must be an email"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "field",
+          "messages"
+        ]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400,
+            "description": "The HTTP status code."
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_FAILED",
+              "UNAUTHENTICATED",
+              "ACCOUNT_SUSPENDED",
+              "FORBIDDEN",
+              "TEACHER_NOT_APPROVED",
+              "NOT_FOUND",
+              "TOO_MANY_REQUESTS",
+              "INTERNAL_ERROR",
+              "RESOURCE_CONFLICT",
+              "INVALID_CURRENT_PASSWORD",
+              "TOKEN_INVALID",
+              "NO_LOGIN_METHOD_REMAINING",
+              "COURSE_ARCHIVED",
+              "COURSE_ADMIN_LOCKED",
+              "COURSE_ALREADY_LOCKED",
+              "COURSE_NOT_LOCKED",
+              "INVALID_STATE_TRANSITION",
+              "ORDER_MISMATCH",
+              "INVITATION_REQUIRED",
+              "INVITATION_PENDING",
+              "ALREADY_ENROLLED",
+              "APPLICATION_PENDING",
+              "ALREADY_TEACHER",
+              "LAST_PLATFORM_ADMIN",
+              "CANNOT_SUSPEND_SELF",
+              "CANNOT_BLOCK_SELF",
+              "CANNOT_BLOCK_ADMIN",
+              "LAST_GROUP_ADMIN",
+              "MEMBERS_UNAVAILABLE",
+              "CANNOT_MESSAGE_USER",
+              "CLIENT_ID_REUSED",
+              "REPORT_ALREADY_RESOLVED",
+              "FILE_TOO_LARGE",
+              "FILE_TYPE_NOT_ALLOWED",
+              "FILE_IN_USE",
+              "SERVICE_UNAVAILABLE"
+            ],
+            "example": "VALIDATION_FAILED",
+            "description": "Machine-readable error code; the frontend branches on this, never on `message`."
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed",
+            "description": "Human-readable text, safe to show but not to parse."
+          },
+          "errors": {
+            "description": "Present for VALIDATION_FAILED: one entry per invalid field.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorDto"
+            }
+          }
+        },
+        "required": [
+          "statusCode",
+          "code",
+          "message"
+        ]
+      }
+    }
+  }
+}

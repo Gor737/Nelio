@@ -289,28 +289,33 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M5 · **Unblocks:** M7
 
-- [ ] **Config:** validated env vars; app refuses to start without secrets; JWT secret ≥ 32 random bytes
-- [ ] **Database:** `PrismaService`, `Tx` type, `runInTransaction` (explicit timeout, bounded retry on deadlock/serialization), `lockRow` over whitelist, error classifiers
-- [ ] **Exception filter:** `{ statusCode, code, message, errors? }`; DB-error mapping; CHECK violation → 500 with loud log
-- [ ] **Global `ValidationPipe`:** whitelist, `forbidNonWhitelisted`, transform
-- [ ] **Logging:** request IDs, structured, redacting tokens/passwords/message bodies
-- [ ] **Security/routing:** Helmet, CORS restricted to frontend origin with credentials, trusted-proxy setting, `/api/v1` prefix
-- [ ] **Throttler:** four classes; per-IP and per-email keys on sensitive endpoints; runs before hashing
-- [ ] Swagger and health endpoint
-- [ ] `AuditWriter.record(tx, entry)` validating against M4 constants
-- [ ] Emit-after-commit event helper
+- [x] **Config:** validated env vars; app refuses to start without secrets; JWT secret ≥ 32 random bytes
+- [x] **Database:** `PrismaService`, `Tx` type, `runInTransaction` (explicit timeout, bounded retry on deadlock/serialization), `lockRow` over whitelist, error classifiers
+- [x] **Exception filter:** `{ statusCode, code, message, errors? }`; DB-error mapping; CHECK violation → 500 with loud log
+- [x] **Global `ValidationPipe`:** whitelist, `forbidNonWhitelisted`, transform
+- [x] **Logging:** request IDs, structured, redacting tokens/passwords/message bodies
+- [x] **Security/routing:** Helmet, CORS restricted to frontend origin with credentials, trusted-proxy setting, `/api/v1` prefix
+- [x] **Throttler:** four classes; per-IP and per-email keys on sensitive endpoints; runs before hashing
+- [x] Swagger and health endpoint
+- [x] `AuditWriter.record(tx, entry)` validating against M4 constants
+- [x] Emit-after-commit event helper
 
 **Tests:**
-- [ ] `runInTransaction` retries after forced deadlock and gives up after the limit
-- [ ] Unique/FK/CHECK violations map to correct statuses and codes
-- [ ] Unknown field → 400 `VALIDATION_FAILED`; malformed UUID → 400
-- [ ] Throttle returns 429 before any other check
-- [ ] Audit row disappears on rollback; invalid action rejected
-- [ ] Logs contain no password/token/message body
-- [ ] Event emitted in a transaction is delivered only after commit, never after rollback
-- [ ] Health responds
+- [x] `runInTransaction` retries after forced deadlock and gives up after the limit
+- [x] Unique/FK/CHECK violations map to correct statuses and codes
+- [x] Unknown field → 400 `VALIDATION_FAILED`; malformed UUID → 400
+- [x] Throttle returns 429 before any other check
+- [x] Audit row disappears on rollback; invalid action rejected
+- [x] Logs contain no password/token/message body
+- [x] Event emitted in a transaction is delivered only after commit, never after rollback
+- [x] Health responds
 
-**Verify:** `ValidationPipe` on Socket.IO gateways (tested in M8); throttler behind a proxy.
+**Verify:** `ValidationPipe` on Socket.IO gateways (tested in M8, still open); throttler behind a proxy (done: `TRUST_PROXY=1` limits each `X-Forwarded-For` client separately, `TRUST_PROXY=0` ignores the header).
+
+**Status (2026-10-25):** implemented in `apps/backend/src/{app.setup.ts,app.module.ts,main.ts,openapi-export.ts}`, `src/common/{filters,pipes,guards,decorators,logging,global-providers.ts}` and `src/infrastructure/{config,database,audit,events,health}`. Tests: `test/infrastructure/config.spec.ts` (14), `test/common/logging.spec.ts` (13), `test/app.e2e-spec.ts` (28, no database), `test/integration/database.integration-spec.ts` (19, real deadlock) and `app.integration-spec.ts` (3, whole `AppModule` + health). `npm run openapi:export` writes `apps/backend/openapi.json`.
+- Recorded choices where the documents are silent (all listed as PROPOSED in `docs/proposed-defaults.md` section 10, awaiting owner review): transaction timeouts and retry numbers; new error code `SERVICE_UNAVAILABLE` (503); DB-error → HTTP mapping (exhausted deadlock → 409, lock/statement timeout → 503); own in-memory rate limiter instead of `@nestjs/throttler`; `user`/`conversation` rate-limit keys wait for authentication (M8/M10); own JSON logger instead of pino; logging lives in `common/logging`, an addition to the folders listed in the architecture.
+- Prisma client generator now sets `importFileExtension = "js"` so the generated imports compile under `nodenext` and Jest.
+- The real `.env` has no `JWT_SECRET`: `npm run start:dev` refuses to start until one is added (see `.env.example`). Integration tests do not need it.
 
 ---
 

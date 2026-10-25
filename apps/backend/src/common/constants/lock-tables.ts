@@ -44,3 +44,19 @@ export type RowLockMode = (typeof ROW_LOCK_MODES)[number];
 /** Advisory lock keys (hashed with hashtextextended). Decision 160. */
 export const ADVISORY_LOCK_KEYS = ['ADMIN-SET'] as const;
 export type AdvisoryLockKey = (typeof ADVISORY_LOCK_KEYS)[number];
+
+/**
+ * The SQL table behind each lockable logical name. Plural snake_case, like the G1 tables; the tables of schema groups
+ * G2-G5 (courses, sections, lessons, enrollments, conversations, messages, reports) are created in M7 under exactly these
+ * names, and the M7 constraint suite fails if one is missing.
+ */
+export const LOCKABLE_TABLE_SQL_NAMES: Record<LockableTable, string> = {
+  user: 'users',
+  course: 'courses',
+  conversation: 'conversations',
+  section: 'sections',
+  lesson: 'lessons',
+  enrollment: 'enrollments',
+  message: 'messages',
+  report: 'reports',
+};

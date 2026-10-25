@@ -114,6 +114,20 @@ The 12 types are documented; the recipient is named for most. Not named: `ENROLL
 
 `ContentBlock.video_external_id` length and character set, slug generation rules for `Category`/`Tag`, password-reset and verification email wording, the exact `Report` snapshot size, and the audit `metadata` shape. None of them is encoded yet.
 
+## 10. Added in M6 (PROPOSED, pending owner review)
+
+These were introduced after the 2026-10-25 approval round, because M6 needed concrete values. Unlike sections 1–9 they are **not yet approved**; each is a one-line change in the file named. Spike B (`docs/spikes/m2-spike-b-report.md`, section 3) is the source for the transaction values.
+
+- **Transaction limits** (`TRANSACTION_LIMITS` in `limits.ts`): `STATEMENT_TIMEOUT_MS` 8000, `LOCK_TIMEOUT_MS` 5000, `PRISMA_TIMEOUT_MS` 10000, `PRISMA_MAX_WAIT_MS` 5000, `MAX_ATTEMPTS` 3 (deadlock/serialization retry, first attempt included), `RETRY_BASE_DELAY_MS` 20 (jittered, multiplied by the attempt number), `POOL_MAX` 10.
+- **New error code `SERVICE_UNAVAILABLE` → 503** (`error-codes.ts`, `source: 'proposed'`): the health endpoint when the database is unreachable, and a database lock/statement timeout. The documented status set had no 5xx other than 500.
+- **Database error → HTTP mapping** (`all-exceptions.filter.ts`): unique, foreign-key and restrict violations that no service translated → 409 `RESOURCE_CONFLICT`; a deadlock or serialization failure that survived the retries → 409 `RESOURCE_CONFLICT`; lock/statement timeout → 503 `SERVICE_UNAVAILABLE` with `Retry-After: 1`; CHECK and NOT NULL violations → 500 `INTERNAL_ERROR` with a loud error log; anything else → 500 with a generic message.
+- **Framework errors → codes**: unmatched route 404 `NOT_FOUND`, malformed JSON 400 `VALIDATION_FAILED`, body too large 413 `FILE_TOO_LARGE`, unsupported media type 415 `FILE_TYPE_NOT_ALLOWED`.
+- **Rate limiter**: own in-memory fixed-window store (single instance, architecture section 1) instead of `@nestjs/throttler`; counters are kept per class and per key; `Retry-After` is returned with every 429. The `email` key is read from `body.email` (lowercased, trimmed). The `user` and `conversation` keys are not available before authentication, so those classes limit by IP only until M8/M10 add them.
+- **Request ids**: an incoming `X-Request-Id` is echoed only when it matches `[A-Za-z0-9._-]{8,64}`; otherwise a UUID is generated. The id is returned in `X-Request-Id`, exposed to the browser through CORS, and included in every log line.
+- **Log redaction**: a field is redacted when any word of its name (split on case and separators) is one of the words in `redact.ts` (password, token, secret, authorization, cookie, message body, and similar); URLs lose their password; the access log records method, path without query, status and duration only.
+- **Swagger**: UI at `/api/docs`, document at `/api/docs-json`, enabled outside production and in production only with `SWAGGER_ENABLED=true`; `npm run openapi:export` writes `apps/backend/openapi.json`.
+- **Environment variables**: `JWT_SECRET`, `DATABASE_URL`, `FRONTEND_ORIGIN`, `PORT`, `TRUST_PROXY` (0–10), `LOG_LEVEL`, `SWAGGER_ENABLED`; see `.env.example`. `FRONTEND_ORIGIN` defaults to `http://localhost:3001` outside production only.
+
 ## Approval and changes
 
-All values were approved by the owner as a set on 2026-10-25 and are used as written. To change one later: edit the constant, update this file, and add a migration if it is a *SQL CHECK*; record it in `decision.log.md` if it affects the schema or the API contract.
+All values in sections 1–9 were approved by the owner as a set on 2026-10-25 and are used as written. Section 10 is awaiting review. To change one later: edit the constant, update this file, and add a migration if it is a *SQL CHECK*; record it in `decision.log.md` if it affects the schema or the API contract.
