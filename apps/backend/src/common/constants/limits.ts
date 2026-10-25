@@ -2,14 +2,14 @@
  * Limits: single source of truth (docs/architecture.md section 20, Decision 137).
  * Read by request DTOs; M5/M7 compare them with the SQL CHECK constraints in a test.
  *
- * `source: 'documented'` values come from the decision log or architecture; `source: 'proposed'` values were not specified
- * by the documents and are the smallest reasonable choice. Proposed values are listed in the M4 milestone report for the
- * owner to confirm; changing one is a one-line edit here (and a matching migration if it has a SQL CHECK).
+ * `source: 'documented'` values come from the decision log or architecture; `source: 'approved-default'` values were not specified
+ * by the documents: they are defaults proposed by the implementer and approved by the owner on 2026-10-25, listed in
+ * docs/proposed-defaults.md. Changing one is a one-line edit here (and a matching migration if it has a SQL CHECK).
  */
 export interface Range {
   readonly min: number;
   readonly max: number;
-  readonly source: 'documented' | 'proposed';
+  readonly source: 'documented' | 'approved-default';
 }
 
 const documented = (min: number, max: number): Range => ({
@@ -17,10 +17,10 @@ const documented = (min: number, max: number): Range => ({
   max,
   source: 'documented',
 });
-const proposed = (min: number, max: number): Range => ({
+const approvedDefault = (min: number, max: number): Range => ({
   min,
   max,
-  source: 'proposed',
+  source: 'approved-default',
 });
 
 /** Text lengths in characters. */
@@ -28,30 +28,30 @@ export const TEXT_LIMITS = {
   /** Architecture: "Passwords: Argon2id, 10-128 chars". */
   PASSWORD: documented(10, 128),
   /** RFC 5321 practical maximum for an address. */
-  EMAIL: proposed(3, 254),
-  USER_FULL_NAME: proposed(1, 100),
-  TEACHER_APPLICATION_MESSAGE: proposed(10, 1000),
-  COURSE_TITLE: proposed(3, 120),
-  COURSE_SUMMARY: proposed(10, 300),
-  COURSE_DESCRIPTION: proposed(0, 5000),
-  SECTION_TITLE: proposed(1, 120),
-  LESSON_TITLE: proposed(1, 150),
+  EMAIL: approvedDefault(3, 254),
+  USER_FULL_NAME: approvedDefault(1, 100),
+  TEACHER_APPLICATION_MESSAGE: approvedDefault(10, 1000),
+  COURSE_TITLE: approvedDefault(3, 120),
+  COURSE_SUMMARY: approvedDefault(10, 300),
+  COURSE_DESCRIPTION: approvedDefault(0, 5000),
+  SECTION_TITLE: approvedDefault(1, 120),
+  LESSON_TITLE: approvedDefault(1, 150),
   /** Markdown text block (Decision 66: text blocks store Markdown). */
-  TEXT_BLOCK_BODY: proposed(1, 20_000),
-  TAG_NAME: proposed(2, 30),
-  CATEGORY_NAME: proposed(2, 60),
-  GROUP_TITLE: proposed(1, 80),
-  MESSAGE_BODY: proposed(1, 2000),
+  TEXT_BLOCK_BODY: approvedDefault(1, 20_000),
+  TAG_NAME: approvedDefault(2, 30),
+  CATEGORY_NAME: approvedDefault(2, 60),
+  GROUP_TITLE: approvedDefault(1, 80),
+  MESSAGE_BODY: approvedDefault(1, 2000),
   /** `Report.description?` (the `reason` column is an enum: SPAM/HARASSMENT/INAPPROPRIATE/OTHER). */
-  REPORT_DESCRIPTION: proposed(1, 1000),
+  REPORT_DESCRIPTION: approvedDefault(1, 1000),
   /** `Report.resolution_note?`. */
-  REPORT_RESOLUTION_NOTE: proposed(1, 1000),
+  REPORT_RESOLUTION_NOTE: approvedDefault(1, 1000),
   /** `UserRole.decision_note?` written with a Teacher application decision. */
-  DECISION_NOTE: proposed(1, 1000),
+  DECISION_NOTE: approvedDefault(1, 1000),
   /** `FileAsset.original_name`. */
-  FILE_ORIGINAL_NAME: proposed(1, 255),
+  FILE_ORIGINAL_NAME: approvedDefault(1, 255),
   /** API-only (no column): reason shown to the Owner when a course is locked (COURSE_ADMIN_LOCKED notification `data`). */
-  ADMIN_LOCK_REASON: proposed(5, 500),
+  ADMIN_LOCK_REASON: approvedDefault(5, 500),
 } as const satisfies Record<string, Range>;
 
 /** Counts and sizes that are not text lengths. */
@@ -113,18 +113,18 @@ export const FILE_LIMITS: Record<
   {
     readonly maxBytes: number;
     readonly mimeTypes: readonly string[];
-    readonly source: 'proposed';
+    readonly source: 'approved-default';
   }
 > = {
   AVATAR: {
     maxBytes: 2 * MB,
     mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-    source: 'proposed',
+    source: 'approved-default',
   },
   COURSE_COVER: {
     maxBytes: 5 * MB,
     mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-    source: 'proposed',
+    source: 'approved-default',
   },
   LESSON_ATTACHMENT: {
     maxBytes: 25 * MB,
@@ -136,6 +136,6 @@ export const FILE_LIMITS: Record<
       'application/zip',
       'text/plain',
     ],
-    source: 'proposed',
+    source: 'approved-default',
   },
 };

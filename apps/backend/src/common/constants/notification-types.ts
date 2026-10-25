@@ -2,7 +2,7 @@
  * Notification types: exactly 12 (docs/architecture.md section 17, Decisions 33, 75, 137, 139).
  * A notification is a type + optional `course_id`/`actor_id` + a JSON display snapshot, created after commit.
  * Chat messages are never notifications. Recipients and triggers below follow the catalog text; where the catalog does
- * not name a recipient it is marked `derived` and listed in the M4 report.
+ * not name a recipient it is marked `approved-derived` (owner-approved default, docs/proposed-defaults.md).
  */
 export type NotificationRecipients =
   | 'ALL_ACTIVE_ADMINS'
@@ -18,7 +18,7 @@ export type NotificationRecipients =
 export interface NotificationTypeSpec {
   readonly recipients: NotificationRecipients;
   readonly trigger: string;
-  readonly source: 'documented' | 'derived';
+  readonly source: 'documented' | 'approved-derived';
 }
 
 export const NOTIFICATION_TYPES = {
@@ -55,17 +55,17 @@ export const NOTIFICATION_TYPES = {
   ENROLLMENT_REJECTED: {
     recipients: 'ENROLLEE',
     trigger: 'A request is rejected.',
-    source: 'derived',
+    source: 'approved-derived',
   },
   REMOVED_FROM_COURSE: {
     recipients: 'REMOVED_STUDENT',
     trigger: 'The Owner or an Admin removes a student.',
-    source: 'derived',
+    source: 'approved-derived',
   },
   INVITATION_RECEIVED: {
     recipients: 'INVITEE',
     trigger: 'An invitation is created or reset.',
-    source: 'derived',
+    source: 'approved-derived',
   },
   LESSON_PUBLISHED: {
     recipients: 'ACTIVE_STUDENTS',
@@ -75,7 +75,7 @@ export const NOTIFICATION_TYPES = {
   OWNERSHIP_TRANSFERRED: {
     recipients: 'NEW_OWNER',
     trigger: 'Course ownership is transferred.',
-    source: 'derived',
+    source: 'approved-derived',
   },
   COURSE_ADMIN_LOCKED: {
     recipients: 'COURSE_OWNER_AND_ASSISTANTS',

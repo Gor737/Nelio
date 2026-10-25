@@ -97,7 +97,9 @@ describe('error codes', () => {
     const documented = codes.filter(
       (c) => ERROR_CODES[c].source === 'documented',
     );
-    const derived = codes.filter((c) => ERROR_CODES[c].source === 'derived');
+    const derived = codes.filter(
+      (c) => ERROR_CODES[c].source === 'approved-derived',
+    );
     expect(documented.length + derived.length).toBe(codes.length);
     expect(documented.length).toBeGreaterThan(10);
     expect(derived.length).toBeGreaterThan(0);
@@ -281,7 +283,7 @@ describe('limits', () => {
       );
       expect(range.min).toBeGreaterThanOrEqual(0);
       expect(range.max).toBeGreaterThanOrEqual(range.min);
-      expect(['documented', 'proposed']).toContain(range.source);
+      expect(['documented', 'approved-default']).toContain(range.source);
       expect(name).toMatch(/^[A-Z]+(_[A-Z]+)*$/);
     }
   });
@@ -426,24 +428,26 @@ describe('docs/proposed-defaults.md', () => {
     'utf8',
   );
 
-  it('says plainly that the values are proposals and not approved decisions', () => {
-    expect(doc).toContain('PROPOSED, requires owner review');
-    expect(doc).toContain('None of this is an approved product decision');
+  it('says plainly that the values are owner-approved initial defaults and NOT requirements of the original documents', () => {
+    expect(doc).toContain(
+      'APPROVED by the owner on 2026-10-25 as initial implementation defaults',
+    );
+    expect(doc).toContain('not requirements of the original documents');
   });
 
-  it('lists every proposed or derived constant by name, so the list cannot fall behind the code', () => {
+  it('lists every approved-default or approved-derived constant by name, so the list cannot fall behind the code', () => {
     const names: string[] = [
       ...Object.entries(TEXT_LIMITS)
-        .filter(([, range]) => range.source === 'proposed')
+        .filter(([, range]) => range.source === 'approved-default')
         .map(([name]) => name),
       ...Object.keys(ERROR_CODES).filter(
-        (c) => ERROR_CODES[c as ErrorCode].source === 'derived',
+        (c) => ERROR_CODES[c as ErrorCode].source === 'approved-derived',
       ),
       ...AUDIT_ACTION_NAMES.filter(
-        (a) => AUDIT_ACTIONS[a].source === 'derived',
+        (a) => AUDIT_ACTIONS[a].source === 'approved-derived',
       ),
       ...NOTIFICATION_TYPE_NAMES.filter(
-        (t) => NOTIFICATION_TYPES[t].source === 'derived',
+        (t) => NOTIFICATION_TYPES[t].source === 'approved-derived',
       ),
       ...Object.keys(RATE_LIMIT_CLASSES),
       ...FILE_KINDS,

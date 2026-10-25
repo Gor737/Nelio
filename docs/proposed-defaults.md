@@ -1,10 +1,10 @@
-# Proposed defaults for values the documents do not state
+# Initial implementation defaults for values the documents do not state
 
-> **Status: PROPOSED, requires owner review. None of this is an approved product decision.** It supersedes and changes no numbered decision. Where a value is stated in `decision.log.md`, `architecture.md` or `roadmap.md`, that text wins and the value is marked **documented** in code and is not listed here.
-> **Source of the values:** `apps/backend/src/common/constants/` and `apps/backend/src/infrastructure/events/event-contracts.ts`. Each entry below is marked `proposed` or `derived` there. A test (`test/constants/shared-constants.spec.ts`) fails if a proposed or derived name is missing from this file, so this list cannot silently fall behind the code.
-> **Date:** 2026-10-25 · **Related, still pending:** Decision 165 (PostgreSQL 18+ and `uuidv7()`), see `decision.log.md`.
+> **Status: APPROVED by the owner on 2026-10-25 as initial implementation defaults.** They were proposed by the implementer (2026-10-25, "proposed defaults") and approved as a set; they are **not requirements of the original documents**, and they supersede and change no numbered decision. Where a value is stated in `decision.log.md`, `architecture.md` or `roadmap.md`, that text wins: the value is marked **documented** in code and is not listed here. Changing any value below later needs the owner's approval and, for a *SQL CHECK*, a migration. (The file keeps its original name `proposed-defaults.md` so earlier references stay valid.)
+> **Source of the values:** `apps/backend/src/common/constants/` and `apps/backend/src/infrastructure/events/event-contracts.ts`. In code each entry below is marked `approved-default` or `approved-derived` (versus `documented` for values the documents state). A test (`test/constants/shared-constants.spec.ts`) fails if such a name is missing from this file, so this list cannot silently fall behind the code.
+> **Date:** 2026-10-25 · **Related:** Decision 165 (PostgreSQL 18+ and `uuidv7()`), Accepted, see `decision.log.md`. **Unresolved:** the production hosting provider is not selected; its PostgreSQL 18 compatibility is a deployment requirement (`roadmap.md` M14).
 
-**Labels.** `proposed` = the documents say nothing, so this is the smallest reasonable value. `derived` = the documents name the thing, and the value follows from a stated rule (for example the status-code test of Decision 140).
+**Labels.** `approved-default` (shown below as *proposed*) = the documents say nothing, so this is the smallest reasonable value. `approved-derived` (shown below as *derived*) = the documents name the thing, and the value follows from a stated rule (for example the status-code test of Decision 140).
 **Where it lands.** *SQL CHECK* = a database CHECK constraint created in M5/M7 (the architecture says "title/length limits from shared constants" are CHECKed, and `Message` has a body-length CHECK). *DTO* = request validation only. *Service* = business rule in the owning service. *Config* = runtime configuration. Everything not marked SQL CHECK stays out of the database on purpose, so it can be changed without a migration.
 
 ## 1. Text lengths (characters)
@@ -114,6 +114,6 @@ The 12 types are documented; the recipient is named for most. Not named: `ENROLL
 
 `ContentBlock.video_external_id` length and character set, slug generation rules for `Category`/`Tag`, password-reset and verification email wording, the exact `Report` snapshot size, and the audit `metadata` shape. None of them is encoded yet.
 
-## How to approve
+## Approval and changes
 
-Reply with the items to change (for example "COURSE_TITLE 3–150") or "approve all". An approved value moves from `proposed` to `documented` in code and is recorded in `decision.log.md` when it affects the schema or the API contract; until then M5 uses these values only where the table above says *SQL CHECK*.
+All values were approved by the owner as a set on 2026-10-25 and are used as written. To change one later: edit the constant, update this file, and add a migration if it is a *SQL CHECK*; record it in `decision.log.md` if it affects the schema or the API contract.

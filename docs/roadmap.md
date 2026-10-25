@@ -1,6 +1,6 @@
 # Nelio Implementation Roadmap
 
-> **Decision range:** 1–164 (all Decided) · **Proposed:** 165 (awaiting owner approval) · **Next decision number:** 166
+> **Decision range:** 1–165 (all Decided) · **Next decision number:** 166 · **Unresolved deployment decision:** production hosting provider (not selected; see M14)
 > **Status:** Design complete (Phases 1–10 closed). Implementation starts at M0.
 
 ---
@@ -90,11 +90,11 @@
 
 ## 4. Change Protocol
 
-Decisions 1–164 are fixed. If a spike or implementation step shows a decision is wrong or impossible:
+Decisions 1–165 are fixed. If a spike or implementation step shows a decision is wrong or impossible:
 
 1. [ ] **Stop** work on the affected item.
 2. [ ] **Write the conflict down** (what the decision says, what was found, evidence).
-3. [ ] **Raise it as a new numbered proposal** (166 and up; 165 is already used by the proposal in the decision log) with options, trade-offs and a recommendation.
+3. [ ] **Raise it as a new numbered proposal** (166 and up) with options, trade-offs and a recommendation.
 4. [ ] **Wait for approval** before changing anything.
 5. [ ] Record the outcome in the decision log; update affected milestones.
 
@@ -131,7 +131,7 @@ Each milestone requires the one before it.
 **Requires:** nothing · **Unblocks:** M1
 
 - [ ] NestJS project, strict TypeScript, Prisma (current versions at start time)
-- [ ] Docker Compose: PostgreSQL 18+ (*proposed minimum, pending owner approval of Decision 165; Compose and CI already use `postgres:18.6`*), Mailpit (MinIO is added in M9a with the Files module)
+- [ ] Docker Compose: PostgreSQL 18+ (Decision 165; Compose and CI use `postgres:18.6`), Mailpit (MinIO is added in M9a with the Files module)
 - [ ] Integration test runner using a real database; connection pool larger than 1 for concurrency tests
 - [ ] CI running the tests
 
@@ -145,7 +145,7 @@ Each milestone requires the one before it.
 Work in a throwaway branch/repo; produce a one-page **Spike A report**.
 
 - [x] Current Prisma setup: generator, driver adapter requirement, multi-file schema (decision 101)
-- [x] UUID v7: database-generated or application-generated (and which library) — *Spike A recommends database-generated `uuidv7()` on PostgreSQL 18+; proposed as Decision 165, pending owner approval*
+- [x] UUID v7: database-generated or application-generated (and which library) — *Spike A recommended database-generated `uuidv7()` on PostgreSQL 18+; accepted as Decision 165 (2026-10-25)*
 - [x] `--create-only` migration with hand-added partial unique index, CHECK, generated `tsvector` column and trigger; generate the next migration and check what Prisma drops or alters. *Spike A finding:* GIN indexes and generated columns must be declared in the Prisma schema (`type: Gin`, `ops: raw(...)`, `dbgenerated(...)` with the exact text from `prisma db pull --print`), otherwise Prisma plans `DROP INDEX`, `DROP COLUMN` or an invalid `ALTER COLUMN ... DROP DEFAULT`; CHECK constraints, triggers and partial indexes stay hand-written SQL and are left alone by Prisma (declaring a partial index in the schema is a preview feature and is not used)
 - [x] Verify `pg_trgm` creation during shadow-database replay (the migration must `CREATE EXTENSION` itself), migration-history replay on an empty database, and schema-drift checks (`prisma migrate diff ... --exit-code`) against both the migration history and the live database
 - [x] Composite FKs (`Lesson→Section`, `Message→ConversationMember`, `LessonCompletion→Enrollment/Lesson`) with referential actions and `(id, course_id)` unique targets
@@ -160,7 +160,7 @@ Work in a throwaway branch/repo; produce a one-page **Spike A report**.
 **Exit status (2026-10-24):**
 - [x] Report lists every assumption as confirmed, contradicted or different, naming affected decisions (`docs/spikes/m1-spike-a-report.md`, committed in `f97fe8a`).
 - [x] The one contradiction (C3: Prisma drops GIN indexes and generated columns that are not declared in the schema) went through the Change Protocol by owner direction, as operational migration rules (M5 above, `architecture.md` section 10) and not as a numbered decision.
-- Still open, not an Exit requirement: Decision 165 remains Proposed, awaiting owner approval; M5 schema work depends on it.
+- Not an Exit requirement: Decision 165 was Proposed at the time of this status; it was approved by the owner on 2026-10-25 and M5 schema work proceeds on it.
 
 ---
 
@@ -238,7 +238,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [x] Permission matrix entries reference real roles and relationship values
 
 **Status (2026-10-25):** implemented in `apps/backend/src/common/constants/` (limits, error codes, permission matrix, notification types, audit actions, rate-limit classes, lock tables) and `apps/backend/src/infrastructure/events/event-contracts.ts`; 25 tests in `apps/backend/test/constants/`, including a test that keeps the audit-writer list equal to the dependency-cruiser allow-list and one that fails if a documented status changes.
-- Values the documents do **not** state are **proposed defaults requiring owner review, not approved decisions**. Each is marked `proposed` or `derived` in code and recorded with its rationale and where it lands (SQL CHECK, DTO, service, config) in `docs/proposed-defaults.md`; a test keeps that file complete. Until the owner approves them, M5 encodes only the ones marked *SQL CHECK* there.
+- Values the documents do **not** state were proposed by the implementer and **approved by the owner on 2026-10-25 as initial implementation defaults** (they are not requirements of the original documents). Each is marked `approved-default` or `approved-derived` in code (versus `documented` for values the documents state) and recorded with its rationale and where it lands (SQL CHECK, DTO, service, config) in `docs/proposed-defaults.md`; a test keeps that file complete.
 - The CHECK-versus-limit comparison is part of M5/M7 (there is no SQL yet).
 
 ---
@@ -536,6 +536,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M13
 
+- [ ] **Select the production hosting provider and verify its compatibility (deployment requirement, Decision 165).** The provider is **not selected** and nothing has been verified. From the provider's official documentation confirm: PostgreSQL 18 or later is offered (`uuidv7()` is core in 18, no extension needed); `pg_trgm` is allowed; advisory locks and `set_config(..., true)` behave correctly behind its connection pooler; backups and a tested restore are possible; S3-compatible private/public bucket policies are possible. Do not deploy to production before this is done.
 - [ ] Same-site deployment (shared registrable domain or reverse proxy); trusted-proxy config; `Secure` cookies; validated production environment
 - [ ] S3 bucket policy: private attachments, public avatars/covers
 - [ ] Database backups **and a tested restore** (deleted-message text persists in backups, decision 86)
@@ -569,7 +570,8 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 ## 8. Decision Status
 
-- **Decided:** 1–164
-- **Open design questions:** none (this does not cover Decision 165, which is a pending proposal, listed next)
-- **Proposed, awaiting owner approval:** 165 (PostgreSQL 18+ and database-generated `uuidv7()`)
+- **Decided:** 1–165 (165: PostgreSQL 18+ and database-generated `uuidv7()`, approved 2026-10-25)
+- **Open design questions:** none
+- **Unresolved deployment decision:** the production hosting provider is not selected. It blocks nothing before M14; its PostgreSQL 18 compatibility check is a deployment requirement (M14).
+- **Initial implementation defaults:** the values in `docs/proposed-defaults.md` were approved by the owner on 2026-10-25 as initial defaults; they are not requirements of the original documents.
 - **Next decision number:** **166**

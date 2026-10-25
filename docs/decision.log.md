@@ -1,6 +1,6 @@
 # Nelio — Decision Log
 
-> **Scope:** the authoritative chronological record of Decisions 1–164. Decision 165 is listed as Proposed (awaiting owner approval) and is not yet part of the accepted record.
+> **Scope:** the authoritative chronological record of Decisions 1–165.
 > **Purpose:** records WHAT was decided and WHY. `architecture.md` describes the final HOW; `roadmap.md` describes implementation order.
 > **Status convention:** "Accepted" means the decision was approved by the project owner. Where a decision was later amended, tightened, extended, finalized or had its implementation changed by a later decision, this is stated in its Status line and in the later decision. Original wording is preserved, and the amendment is recorded rather than silently resolved.
 
@@ -968,7 +968,7 @@ Upload flow settled in Decision 116.
 
 ## Decision 65 — Database conventions
 
-**Status:** Accepted
+**Status:** Accepted (generation mechanism finalized by Decision 165)
 
 ### Decision
 UUID v7 keys, `timestamptz`, PostgreSQL enums for fixed value sets, status columns for lifecycle state, and `deleted_at` only where history requires it.
@@ -2468,12 +2468,12 @@ Implementation follows the roadmap. Any conflict found during implementation fol
 
 ## Decision 165 — PostgreSQL 18 minimum and database-generated UUID v7 keys
 
-**Status:** Proposed — awaiting owner approval. Not Accepted: Decision 65 stays authoritative exactly as written until this proposal is approved.
+**Status:** Accepted (proposed 2026-10-24 from Spike A; approved by the project owner 2026-10-25, "as written"). Finalizes the generation mechanism left open by Decision 65.
 
-### Decision (proposed)
+### Decision
 Require **PostgreSQL 18 or later** in local development, CI and eventual deployment. Where the schema specifies a UUID v7 primary key, the **database generates it** with PostgreSQL's native `uuidv7()` as the column default (in Prisma: `@default(dbgenerated("uuidv7()")) @db.Uuid`). Application-side generation (the `uuid` package, version 7) is used only where an id is needed before the INSERT.
 
-This proposal does **not** select a hosting provider or deployment platform.
+This decision does **not** select a hosting provider or deployment platform. The production hosting provider has **not been selected**, so compatibility with the intended hosting is **not verified** (see Consequences).
 
 ### Reason / Context
 - Decision 65 fixed UUID v7 keys and deferred the generation mechanism to Spike A ("The UUID v7 generation mechanism is confirmed in Spike A"). The roadmap M1 item asks "database-generated or application-generated".
@@ -2484,13 +2484,13 @@ This proposal does **not** select a hosting provider or deployment platform.
 - Alternatives considered: (B) application-generated ids only, with no PostgreSQL minimum but no default for raw inserts; (C) a hand-written `uuidv7()` polyfill for older PostgreSQL, which keeps the database default but adds code to maintain and may collide with the native function name on upgrade; (D) defer, which leaves M5 migrations without a fixed mechanism.
 
 ### Relationship to existing decisions
-- References **Decision 65**. If accepted, this decision would supersede **only** the clause in Decision 65's Consequences, "The UUID v7 generation mechanism is confirmed in Spike A.", by fixing the mechanism as described above. It would also give the unspecified "deployment major version" wording (roadmap M0, architecture "same major version as deployment") the value "PostgreSQL 18 or later".
+- References **Decision 65**. This decision supersedes **only** the clause in Decision 65's Consequences, "The UUID v7 generation mechanism is confirmed in Spike A.", by fixing the mechanism as described above. It also gives the unspecified "deployment major version" wording (roadmap M0, architecture "same major version as deployment") the value "PostgreSQL 18 or later". Decision 65's original text is preserved; its Status line now records the finalization, as the supersession is recorded in both entries.
 - Preserved unchanged: UUID v7 keys, `timestamptz`, PostgreSQL enums, status columns, `deleted_at` only where history requires it (all other provisions of Decision 65), and every other decision.
-- On acceptance (not done now): the Status of Decision 65 becomes "Accepted (generation mechanism finalized by Decision 165)", recorded in both entries; `architecture.md` (primary-key convention and the PostgreSQL development-environment row) and the `roadmap.md` M0 wording lose their "proposed" label.
+- Applied on acceptance: Decision 65's Status; `architecture.md` (primary-key convention, PostgreSQL development-environment row and the "Source of truth" range); `roadmap.md` (M0 wording, M1 UUID item, decision range and status).
 
 ### Consequences / Constraints
-- If accepted: Prisma models use `dbgenerated("uuidv7()")` for UUID v7 keys; the PostgreSQL minimum can only be lowered by a new decision; the owner confirms PostgreSQL 18 availability for the intended deployment before accepting.
-- Until approved: no change to Decision 65; the M5 schema migrations depend on the outcome.
+- Prisma models use `dbgenerated("uuidv7()")` for UUID v7 keys; the PostgreSQL minimum can only be lowered by a new decision.
+- **Unresolved deployment decision / deployment requirement:** the production hosting provider has not been selected (owner statement, 2026-10-25). Before any production deployment the chosen provider's official documentation must confirm PostgreSQL 18 (or later), the `pg_trgm` extension, behavior of advisory locks and `set_config(..., true)` under its connection pooler, and backup/restore. This check is tracked in `roadmap.md` M14 and is **not yet done**; compatibility must not be assumed.
 
 ---
 
@@ -2498,14 +2498,15 @@ This proposal does **not** select a hosting provider or deployment platform.
 
 The next available decision number is:
 
-**Decision 166** (Decision 165 is proposed and awaiting owner approval)
+**Decision 166**
 
 ---
 
 # Decision Governance
 
-- **Current (accepted) decisions:** 1–164 · **Proposed, awaiting owner approval:** 165
+- **Current decisions:** 1–165
 - **Next available decision:** 166
+- **Unresolved deployment decision (not a numbered decision yet):** the production hosting provider is not selected; see Decision 165, Consequences.
 - **No silent architectural changes.** The architecture may not be altered without a numbered decision.
-- **Any implementation conflict must result in a new numbered decision.** If a spike or implementation step shows an existing decision is wrong or impossible, work stops, the conflict is written down, and a new proposal (166 and up; number 165 is already used by the proposal recorded above) is raised and approved before anything changes.
+- **Any implementation conflict must result in a new numbered decision.** If a spike or implementation step shows an existing decision is wrong or impossible, work stops, the conflict is written down, and a new proposal (166 and up) is raised and approved before anything changes.
 - **Existing decisions remain authoritative until explicitly superseded** by a later numbered decision, and the supersession is recorded in both entries.

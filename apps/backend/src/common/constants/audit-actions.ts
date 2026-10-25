@@ -5,8 +5,9 @@
  *
  * Documented names: TEACHER_APPROVED (Decision 137 keeps it for audit while the notification is
  * TEACHER_APPLICATION_APPROVED), COURSE_ADMIN_UNLOCKED (Decision 141), REPORT_CONTEXT_VIEWED (Decision 77/78 area).
- * The remaining names are `derived` from the transaction catalog and the endpoint groups; they are listed in the M4
- * report for review. `writer` is the module that calls `AuditWriter`, and must be in AUDIT_WRITER_MODULES, which the
+ * The remaining names are `approved-derived`: derived from the transaction catalog and the endpoint groups, listed in
+ * docs/proposed-defaults.md and approved by the owner on 2026-10-25. `writer` is the module that calls `AuditWriter`,
+ * and must be in AUDIT_WRITER_MODULES, which the
  * dependency-cruiser rule `audit-only-by-audited-modules` mirrors (a test keeps the two in sync).
  */
 export const AUDIT_WRITER_MODULES = [
@@ -21,52 +22,52 @@ export type AuditWriterModule = (typeof AUDIT_WRITER_MODULES)[number];
 
 export interface AuditActionSpec {
   readonly writer: AuditWriterModule;
-  readonly source: 'documented' | 'derived';
+  readonly source: 'documented' | 'approved-derived';
 }
 
 const documented = (writer: AuditWriterModule): AuditActionSpec => ({
   writer,
   source: 'documented',
 });
-const derived = (writer: AuditWriterModule): AuditActionSpec => ({
+const approvedDerived = (writer: AuditWriterModule): AuditActionSpec => ({
   writer,
-  source: 'derived',
+  source: 'approved-derived',
 });
 
 export const AUDIT_ACTIONS = {
   // users and roles
   TEACHER_APPROVED: documented('users'),
-  TEACHER_REJECTED: derived('users'),
-  TEACHER_REVOKED: derived('users'),
-  USER_SUSPENDED: derived('users'),
-  USER_UNSUSPENDED: derived('users'),
-  ADMIN_ROLE_GRANTED: derived('users'),
-  ADMIN_ROLE_REVOKED: derived('users'),
+  TEACHER_REJECTED: approvedDerived('users'),
+  TEACHER_REVOKED: approvedDerived('users'),
+  USER_SUSPENDED: approvedDerived('users'),
+  USER_UNSUSPENDED: approvedDerived('users'),
+  ADMIN_ROLE_GRANTED: approvedDerived('users'),
+  ADMIN_ROLE_REVOKED: approvedDerived('users'),
   // course lifecycle and team
-  COURSE_PUBLISHED: derived('courses'),
-  COURSE_ARCHIVED: derived('courses'),
-  COURSE_RESTORED: derived('courses'),
-  COURSE_DELETED: derived('courses'),
-  COURSE_ADMIN_LOCKED: derived('courses'),
+  COURSE_PUBLISHED: approvedDerived('courses'),
+  COURSE_ARCHIVED: approvedDerived('courses'),
+  COURSE_RESTORED: approvedDerived('courses'),
+  COURSE_DELETED: approvedDerived('courses'),
+  COURSE_ADMIN_LOCKED: approvedDerived('courses'),
   COURSE_ADMIN_UNLOCKED: documented('courses'),
-  COURSE_ADMIN_RESTORED: derived('courses'),
-  COURSE_OWNERSHIP_TRANSFERRED: derived('courses'),
-  COURSE_ASSISTANT_ADDED: derived('courses'),
-  COURSE_ASSISTANT_REMOVED: derived('courses'),
+  COURSE_ADMIN_RESTORED: approvedDerived('courses'),
+  COURSE_OWNERSHIP_TRANSFERRED: approvedDerived('courses'),
+  COURSE_ASSISTANT_ADDED: approvedDerived('courses'),
+  COURSE_ASSISTANT_REMOVED: approvedDerived('courses'),
   // students
-  STUDENT_REMOVED: derived('enrollments'),
-  STUDENT_REINSTATED: derived('enrollments'),
+  STUDENT_REMOVED: approvedDerived('enrollments'),
+  STUDENT_REINSTATED: approvedDerived('enrollments'),
   // chat moderation
-  MESSAGE_DELETED_BY_MODERATOR: derived('chat'),
+  MESSAGE_DELETED_BY_MODERATOR: approvedDerived('chat'),
   // reports
   REPORT_CONTEXT_VIEWED: documented('moderation'),
-  REPORT_DISMISSED: derived('moderation'),
-  REPORT_ACTIONED: derived('moderation'),
+  REPORT_DISMISSED: approvedDerived('moderation'),
+  REPORT_ACTIONED: approvedDerived('moderation'),
   // catalog management (Admin orchestrates the Catalog module)
-  CATEGORY_CREATED: derived('admin'),
-  CATEGORY_UPDATED: derived('admin'),
-  CATEGORY_DELETED: derived('admin'),
-  TAG_MERGED: derived('admin'),
+  CATEGORY_CREATED: approvedDerived('admin'),
+  CATEGORY_UPDATED: approvedDerived('admin'),
+  CATEGORY_DELETED: approvedDerived('admin'),
+  TAG_MERGED: approvedDerived('admin'),
 } as const satisfies Record<string, AuditActionSpec>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
