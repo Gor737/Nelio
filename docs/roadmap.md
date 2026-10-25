@@ -255,28 +255,33 @@ Use real parallel connections and a helper that holds a transaction open while a
 - Put PostgreSQL enum `ALTER TYPE ... ADD VALUE` in a separate migration from any migration that uses the new value.
 
 **Schema (`--create-only`, hand-written SQL appended, decision 102):**
-- [ ] Enums, `pg_trgm` extension, G1 tables with later-added columns: `User.email_verified_at`, `User.tokens_valid_after`, `UserRole.application_message`/`decision_note`, `RefreshToken.used_at`/`family_started_at`
-- [ ] `User ↔ FileAsset` circular reference created in one migration
-- [ ] CHECKs: `UserRole` decided pair; `RefreshToken.expires_at <= family_started_at + 90 days`; `FileAsset.size_bytes > 0`; `Block` self-block
-- [ ] Trigram index on `User.full_name`; **`AuditLog` immutability trigger**
-- [ ] Indexes: `RefreshToken(token_hash)` unique, `(user_id)`, `(family_id)`; `EmailToken(user_id, type)`; G1 unique keys; audit indexes; `Block(blocked_id)`; `UserRole(role, status)`; avatar partial FK index (decision 163)
+- [x] Enums, `pg_trgm` extension, G1 tables with later-added columns: `User.email_verified_at`, `User.tokens_valid_after`, `UserRole.application_message`/`decision_note`, `RefreshToken.used_at`/`family_started_at`
+- [x] `User ↔ FileAsset` circular reference created in one migration
+- [x] CHECKs: `UserRole` decided pair; `RefreshToken.expires_at <= family_started_at + 90 days`; `FileAsset.size_bytes > 0`; `Block` self-block
+- [x] Trigram index on `User.full_name`; **`AuditLog` immutability trigger**
+- [x] Indexes: `RefreshToken(token_hash)` unique, `(user_id)`, `(family_id)`; `EmailToken(user_id, type)`; G1 unique keys; audit indexes; `Block(blocked_id)`; `UserRole(role, status)`; avatar partial FK index (decision 163)
 
 **Test harness (deliverable):**
-- [ ] Database lifecycle (build from migrations, test isolation, real pool)
-- [ ] Factories (direct inserts) for users and roles (later courses, enrollments)
-- [ ] Test-only access-token minter using the real secret/algorithm
-- [ ] Parallel-transaction helper (from M2)
-- [ ] Direct-SQL helper for constraint tests
-- [ ] Short README
+- [x] Database lifecycle (build from migrations, test isolation, real pool)
+- [x] Factories (direct inserts) for users and roles (later courses, enrollments)
+- [x] Test-only access-token minter using the real secret/algorithm
+- [x] Parallel-transaction helper (from M2)
+- [x] Direct-SQL helper for constraint tests
+- [x] Short README
 
 **Constraint tests:**
-- [ ] Duplicate email rejected; duplicate `(user_id, role)` rejected
-- [ ] `decided_by` without `decided_at` rejected
-- [ ] `RefreshToken` beyond the 90-day cap rejected
-- [ ] `AuditLog` UPDATE and DELETE rejected by trigger
-- [ ] Self-block and duplicate block rejected
-- [ ] `size_bytes = 0` rejected
-- [ ] Migration replay on a fresh DB; drift detection reports nothing unexpected
+- [x] Duplicate email rejected; duplicate `(user_id, role)` rejected
+- [x] `decided_by` without `decided_at` rejected
+- [x] `RefreshToken` beyond the 90-day cap rejected
+- [x] `AuditLog` UPDATE and DELETE rejected by trigger
+- [x] Self-block and duplicate block rejected
+- [x] `size_bytes = 0` rejected
+- [x] Migration replay on a fresh DB; drift detection reports nothing unexpected
+
+**Status (2026-10-25):** implemented in `apps/backend/prisma/` (6 schema files, migration `20261025115804_g1_users_auth_files_audit_blocks`, `database-url.mjs`), `apps/backend/prisma.config.ts` and `apps/backend/test/` (harness in `support/`, 28 constraint tests in `integration/`, 5 token-minter tests; `test/README.md`). The migration was applied to the development database `nelio`; `prisma migrate diff` reports no drift against the migration history (shadow replay) or the live database, for both `nelio` and the test database. Mutation checks (changing the 90-day cap, the trigger event, the size CHECK) make 4 tests fail.
+- Recorded choices where the documents are silent: tables are plural snake_case (`users`, `user_roles`, `refresh_tokens`, `auth_identities`, `email_tokens`, `file_assets`, `audit_logs`, `blocks`); `updated_at` exists only on `users` and `user_roles` (rows of the other G1 tables change through dedicated timestamps or never); `updated_at` is set by Prisma (`@updatedAt`), not by a trigger; foreign keys keep Prisma's default `ON UPDATE CASCADE` (ids never change); `audit_logs.target_id` is a non-null UUID; the generated Prisma client lives in the gitignored `src/generated/prisma` and is created by `npm run prisma:generate` (CI runs it).
+- The `audit_logs` trigger guards UPDATE and DELETE as the architecture states; TRUNCATE is not guarded (the test harness relies on it).
+- Not part of M5: SQL CHECK limits for titles, tags, categories, group titles and message bodies belong to the tables of G2-G5 (M7).
 
 ---
 

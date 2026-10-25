@@ -1,0 +1,77 @@
+// Users module: User, UserRole. Schema group G1 (docs/architecture.md sections 9 and 10, Decision 101).
+// Delete behavior (section 8): users are never deleted, every reference is RESTRICT.
+// Hand-written SQL in the G1 migration (not expressible here): partial index on avatar_file_id (Decision 163),
+// CHECK user_roles_decided_pair.
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@map("user_status")
+}
+
+enum PlatformRole {
+  STUDENT
+  TEACHER
+  ADMIN
+
+  @@map("platform_role")
+}
+
+enum RoleStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REVOKED
+
+  @@map("role_status")
+}
+
+model User {
+  id               String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  email            String     @unique // lowercased in code
+  passwordHash     String?    @map("password_hash")
+  fullName         String     @map("full_name")
+  avatarFileId     String?    @map("avatar_file_id") @db.Uuid
+  status           UserStatus @default(ACTIVE)
+  suspendedAt      DateTime?  @map("suspended_at") @db.Timestamptz(6)
+  emailVerifiedAt  DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  tokensValidAfter DateTime?  @map("tokens_valid_after") @db.Timestamptz(6)
+  lastSeenAt       DateTime?  @map("last_seen_at") @db.Timestamptz(6)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  avatarFile     FileAsset?     @relation("UserAvatar", fields: [avatarFileId], references: [id], onDelete: Restrict)
+  uploadedFiles  FileAsset[]    @relation("FileUploader")
+  roles          UserRole[]     @relation("RoleOwner")
+  decidedRoles   UserRole[]     @relation("RoleDecider")
+  refreshTokens  RefreshToken[]
+  authIdentities AuthIdentity[]
+  emailTokens    EmailToken[]
+  auditLogs      AuditLog[]
+  blocksMade     Block[]        @relation("Blocker")
+  blocksReceived Block[]        @relation("Blocked")
+
+  // Trigram search on the full name (user search). pg_trgm is created at the top of the G1 migration.
+  @@index([fullName(ops: raw("gin_trgm_ops"))], map: "users_full_name_trgm_idx", type: Gin)
+  @@map("users")
+}
+
+model UserRole {
+  userId             String       @map("user_id") @db.Uuid
+  role               PlatformRole
+  status             RoleStatus
+  applicationMessage String?      @map("application_message")
+  decisionNote       String?      @map("decision_note")
+  decidedBy          String?      @map("decided_by") @db.Uuid
+  decidedAt          DateTime?    @map("decided_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user    User  @relation("RoleOwner", fields: [userId], references: [id], onDelete: Restrict)
+  decider User? @relation("RoleDecider", fields: [decidedBy], references: [id], onDelete: Restrict)
+
+  @@id([userId, role])
+  @@index([role, status])
+  @@map("user_roles")
+}

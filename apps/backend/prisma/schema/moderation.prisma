@@ -1,0 +1,15 @@
+// Moderation module: Block (Report arrives with schema group G5 in M7). Block -> User is CASCADE (section 8).
+// Hand-written SQL in the G1 migration: CHECK blocks_no_self_block (blocker_id <> blocked_id).
+
+model Block {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}

@@ -1,0 +1,20 @@
+// Audit infrastructure: AuditLog. Schema group G1. Immutable (Decision 78): the hand-written trigger
+// audit_logs_immutable in the G1 migration rejects UPDATE and DELETE. `action` is text validated against the code
+// constants; the target reference is intentionally loose (no foreign key). AuditLog -> User is RESTRICT (section 8).
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  action     String
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id") @db.Uuid
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([targetType, targetId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}

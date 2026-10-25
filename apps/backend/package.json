@@ -23,7 +23,14 @@
     "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "check:deps": "depcruise src --config .dependency-cruiser.cjs",
     "check:forward-ref": "node scripts/check-forward-ref.mjs src",
-    "check:architecture": "npm run check:deps && npm run check:forward-ref"
+    "check:architecture": "npm run check:deps && npm run check:forward-ref",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "db:prepare": "node --env-file-if-exists=../../.env scripts/db-prepare.mjs",
+    "db:migrate:create": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate dev --create-only",
+    "db:migrate:deploy": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate deploy",
+    "db:drift": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --script --exit-code",
+    "db:drift:live": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema --script --exit-code"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

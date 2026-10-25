@@ -137,7 +137,8 @@ module.exports = {
     },
   ],
   options: {
-    doNotFollow: { path: 'node_modules' },
+    // Edges INTO node_modules and src/generated stay visible (the controllers rule needs them); their insides are not crawled.
+    doNotFollow: { path: ['node_modules', '^src/generated'] },
     tsConfig: { fileName: 'tsconfig.json' },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {

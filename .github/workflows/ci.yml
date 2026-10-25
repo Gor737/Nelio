@@ -35,6 +35,8 @@ jobs:
           cache: npm
           cache-dependency-path: apps/backend/package-lock.json
       - run: npm ci
+      - run: npm run prisma:validate
+      - run: npm run prisma:generate
       - run: npm run lint
       - run: npx tsc --noEmit -p tsconfig.build.json
       - run: npm run check:architecture
