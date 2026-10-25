@@ -222,20 +222,24 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M3 · **Unblocks:** M5 (decision 137)
 
-- [ ] **Limits** (titles, bodies, tags, group cap, file sizes) read by DTOs; later compared with SQL
-- [ ] **Error codes** with statuses per decision 140 and Phase 7 codes (incl. `COURSE_ADMIN_LOCKED` 403/409, `INVITATION_REQUIRED` 403, `FILE_TOO_LARGE` 413, `FILE_TYPE_NOT_ALLOWED` 415, `INVALID_STATE_TRANSITION`, `COURSE_ALREADY_LOCKED`, `COURSE_NOT_LOCKED`)
-- [ ] **Permission matrix** as data (incl. Admin-applies-for-Teacher correction)
-- [ ] **Notification types** (12) with recipients and triggers
-- [ ] **Audit actions** (incl. `COURSE_ADMIN_UNLOCKED`); separate list from notification names
-- [ ] **Rate-limit classes:** Strict, Tight, Per-conversation burst, Default
-- [ ] **Event contracts** (`message.created`, `membership.ended`, `session.revoked`, `socket.connected/disconnected`, notification events)
-- [ ] **Lock-table whitelist** for `lockRow`
+- [x] **Limits** (titles, bodies, tags, group cap, file sizes) read by DTOs; later compared with SQL
+- [x] **Error codes** with statuses per decision 140 and Phase 7 codes (incl. `COURSE_ADMIN_LOCKED` 403/409, `INVITATION_REQUIRED` 403, `FILE_TOO_LARGE` 413, `FILE_TYPE_NOT_ALLOWED` 415, `INVALID_STATE_TRANSITION`, `COURSE_ALREADY_LOCKED`, `COURSE_NOT_LOCKED`)
+- [x] **Permission matrix** as data (incl. Admin-applies-for-Teacher correction)
+- [x] **Notification types** (12) with recipients and triggers
+- [x] **Audit actions** (incl. `COURSE_ADMIN_UNLOCKED`); separate list from notification names
+- [x] **Rate-limit classes:** Strict, Tight, Per-conversation burst, Default
+- [x] **Event contracts** (`message.created`, `membership.ended`, `session.revoked`, `socket.connected/disconnected`, notification events)
+- [x] **Lock-table whitelist** for `lockRow`
 
 **Tests:**
-- [ ] Error codes unique, each with one status (or the two-status exception)
-- [ ] Exactly 12 notification types
-- [ ] Audit actions unique
-- [ ] Permission matrix entries reference real roles and relationship values
+- [x] Error codes unique, each with one status (or the two-status exception)
+- [x] Exactly 12 notification types
+- [x] Audit actions unique
+- [x] Permission matrix entries reference real roles and relationship values
+
+**Status (2026-10-25):** implemented in `apps/backend/src/common/constants/` (limits, error codes, permission matrix, notification types, audit actions, rate-limit classes, lock tables) and `apps/backend/src/infrastructure/events/event-contracts.ts`; 25 tests in `apps/backend/test/constants/`, including a test that keeps the audit-writer list equal to the dependency-cruiser allow-list and one that fails if a documented status changes.
+- Values the documents do **not** state were chosen (each is marked `chosen` or `derived` in code) and need the owner's confirmation before they are baked into the schema in M5: all text-length limits, `TAGS_PER_COURSE_MAX`, cursor page sizes, file size caps and allowed content types, email-token TTL, the four rate-limit numbers, the audit action names other than `TEACHER_APPROVED`, `COURSE_ADMIN_UNLOCKED` and `REPORT_CONTEXT_VIEWED`, the notification recipients marked `derived`, and the HTTP status of 8 error codes whose names are documented (`ALREADY_ENROLLED`, `CLIENT_ID_REUSED`, `COURSE_ALREADY_LOCKED`, `FILE_IN_USE`, `INVALID_STATE_TRANSITION`, `LAST_GROUP_ADMIN`, `LAST_PLATFORM_ADMIN`, `REPORT_ALREADY_RESOLVED`).
+- The CHECK-versus-limit comparison is part of M5/M7 (there is no SQL yet).
 
 ---
 
