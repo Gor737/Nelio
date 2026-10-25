@@ -2,14 +2,14 @@
  * Limits: single source of truth (docs/architecture.md section 20, Decision 137).
  * Read by request DTOs; M5/M7 compare them with the SQL CHECK constraints in a test.
  *
- * `source: 'documented'` values come from the decision log or architecture; `source: 'chosen'` values were not specified
- * by the documents and are the smallest reasonable choice. Chosen values are listed in the M4 milestone report for the
+ * `source: 'documented'` values come from the decision log or architecture; `source: 'proposed'` values were not specified
+ * by the documents and are the smallest reasonable choice. Proposed values are listed in the M4 milestone report for the
  * owner to confirm; changing one is a one-line edit here (and a matching migration if it has a SQL CHECK).
  */
 export interface Range {
   readonly min: number;
   readonly max: number;
-  readonly source: 'documented' | 'chosen';
+  readonly source: 'documented' | 'proposed';
 }
 
 const documented = (min: number, max: number): Range => ({
@@ -17,10 +17,10 @@ const documented = (min: number, max: number): Range => ({
   max,
   source: 'documented',
 });
-const chosen = (min: number, max: number): Range => ({
+const proposed = (min: number, max: number): Range => ({
   min,
   max,
-  source: 'chosen',
+  source: 'proposed',
 });
 
 /** Text lengths in characters. */
@@ -28,24 +28,30 @@ export const TEXT_LIMITS = {
   /** Architecture: "Passwords: Argon2id, 10-128 chars". */
   PASSWORD: documented(10, 128),
   /** RFC 5321 practical maximum for an address. */
-  EMAIL: chosen(3, 254),
-  USER_FULL_NAME: chosen(1, 100),
-  TEACHER_APPLICATION_MESSAGE: chosen(10, 1000),
-  COURSE_TITLE: chosen(3, 120),
-  COURSE_SUMMARY: chosen(10, 300),
-  COURSE_DESCRIPTION: chosen(0, 5000),
-  SECTION_TITLE: chosen(1, 120),
-  LESSON_TITLE: chosen(1, 150),
+  EMAIL: proposed(3, 254),
+  USER_FULL_NAME: proposed(1, 100),
+  TEACHER_APPLICATION_MESSAGE: proposed(10, 1000),
+  COURSE_TITLE: proposed(3, 120),
+  COURSE_SUMMARY: proposed(10, 300),
+  COURSE_DESCRIPTION: proposed(0, 5000),
+  SECTION_TITLE: proposed(1, 120),
+  LESSON_TITLE: proposed(1, 150),
   /** Markdown text block (Decision 66: text blocks store Markdown). */
-  TEXT_BLOCK_BODY: chosen(1, 20_000),
-  TAG_NAME: chosen(2, 30),
-  CATEGORY_NAME: chosen(2, 60),
-  GROUP_TITLE: chosen(1, 80),
-  MESSAGE_BODY: chosen(1, 2000),
-  REPORT_REASON: chosen(1, 1000),
-  INVITATION_MESSAGE: chosen(0, 500),
-  /** Admin reason shown to the Owner when a course is locked (COURSE_ADMIN_LOCKED notification `data`). */
-  ADMIN_LOCK_REASON: chosen(5, 500),
+  TEXT_BLOCK_BODY: proposed(1, 20_000),
+  TAG_NAME: proposed(2, 30),
+  CATEGORY_NAME: proposed(2, 60),
+  GROUP_TITLE: proposed(1, 80),
+  MESSAGE_BODY: proposed(1, 2000),
+  /** `Report.description?` (the `reason` column is an enum: SPAM/HARASSMENT/INAPPROPRIATE/OTHER). */
+  REPORT_DESCRIPTION: proposed(1, 1000),
+  /** `Report.resolution_note?`. */
+  REPORT_RESOLUTION_NOTE: proposed(1, 1000),
+  /** `UserRole.decision_note?` written with a Teacher application decision. */
+  DECISION_NOTE: proposed(1, 1000),
+  /** `FileAsset.original_name`. */
+  FILE_ORIGINAL_NAME: proposed(1, 255),
+  /** API-only (no column): reason shown to the Owner when a course is locked (COURSE_ADMIN_LOCKED notification `data`). */
+  ADMIN_LOCK_REASON: proposed(5, 500),
 } as const satisfies Record<string, Range>;
 
 /** Counts and sizes that are not text lengths. */
@@ -107,18 +113,18 @@ export const FILE_LIMITS: Record<
   {
     readonly maxBytes: number;
     readonly mimeTypes: readonly string[];
-    readonly source: 'chosen';
+    readonly source: 'proposed';
   }
 > = {
   AVATAR: {
     maxBytes: 2 * MB,
     mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-    source: 'chosen',
+    source: 'proposed',
   },
   COURSE_COVER: {
     maxBytes: 5 * MB,
     mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-    source: 'chosen',
+    source: 'proposed',
   },
   LESSON_ATTACHMENT: {
     maxBytes: 25 * MB,
@@ -130,6 +136,6 @@ export const FILE_LIMITS: Record<
       'application/zip',
       'text/plain',
     ],
-    source: 'chosen',
+    source: 'proposed',
   },
 };

@@ -1,5 +1,7 @@
 // M4 tests: the shared source-of-truth files are internally consistent and agree with the documents and with each other.
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import {
   ADVISORY_LOCK_KEYS,
   AUDIT_ACTIONS,
@@ -279,7 +281,7 @@ describe('limits', () => {
       );
       expect(range.min).toBeGreaterThanOrEqual(0);
       expect(range.max).toBeGreaterThanOrEqual(range.min);
-      expect(['documented', 'chosen']).toContain(range.source);
+      expect(['documented', 'proposed']).toContain(range.source);
       expect(name).toMatch(/^[A-Z]+(_[A-Z]+)*$/);
     }
   });
@@ -413,5 +415,52 @@ describe('event contracts', () => {
     expect(events).toHaveLength(12);
     expect(new Set(events).size).toBe(12);
     for (const event of events) expect(EVENT_NAMES).toContain(event);
+  });
+});
+
+describe('docs/proposed-defaults.md', () => {
+  const doc = readFileSync(
+    fileURLToPath(
+      new URL('../../../../docs/proposed-defaults.md', import.meta.url),
+    ),
+    'utf8',
+  );
+
+  it('says plainly that the values are proposals and not approved decisions', () => {
+    expect(doc).toContain('PROPOSED, requires owner review');
+    expect(doc).toContain('None of this is an approved product decision');
+  });
+
+  it('lists every proposed or derived constant by name, so the list cannot fall behind the code', () => {
+    const names: string[] = [
+      ...Object.entries(TEXT_LIMITS)
+        .filter(([, range]) => range.source === 'proposed')
+        .map(([name]) => name),
+      ...Object.keys(ERROR_CODES).filter(
+        (c) => ERROR_CODES[c as ErrorCode].source === 'derived',
+      ),
+      ...AUDIT_ACTION_NAMES.filter(
+        (a) => AUDIT_ACTIONS[a].source === 'derived',
+      ),
+      ...NOTIFICATION_TYPE_NAMES.filter(
+        (t) => NOTIFICATION_TYPES[t].source === 'derived',
+      ),
+      ...Object.keys(RATE_LIMIT_CLASSES),
+      ...FILE_KINDS,
+      'PAGE_SIZE_DEFAULT',
+      'CURSOR_PAGE_SIZE_DEFAULT',
+      'CURSOR_PAGE_SIZE_MAX',
+      'TAGS_PER_COURSE_MAX',
+      'EMAIL_TOKEN_TTL_MS',
+    ];
+    expect(names.filter((name) => !doc.includes(name))).toEqual([]);
+    expect(names.length).toBeGreaterThan(60);
+  });
+
+  it('does not mention constants that were removed because the schema has no such columns', () => {
+    expect(doc).not.toContain('REPORT_REASON');
+    expect(doc).not.toContain('INVITATION_MESSAGE');
+    expect(Object.keys(TEXT_LIMITS)).not.toContain('REPORT_REASON');
+    expect(Object.keys(TEXT_LIMITS)).not.toContain('INVITATION_MESSAGE');
   });
 });

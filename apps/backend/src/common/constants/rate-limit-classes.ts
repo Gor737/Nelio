@@ -1,7 +1,7 @@
 /**
  * Rate-limit classes (docs/architecture.md section 13, Decision 137): Strict, Tight, Per-conversation burst, Default.
  * A global throttler runs before authentication (check order: 429 first), so `ip` is always available; `user` and
- * `email` keys are added where the endpoint has them. The numbers are `chosen` (the documents name the classes and the
+ * `email` keys are added where the endpoint has them. The numbers are `proposed` (the documents name the classes and the
  * endpoints, not the values) and are listed in the M4 report for review.
  */
 export interface RateLimitClass {
