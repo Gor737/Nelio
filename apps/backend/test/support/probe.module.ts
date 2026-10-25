@@ -2,9 +2,21 @@
 // no database, so it runs in the plain e2e suite. It lives in test/ and is never imported by src/.
 import { Body, Controller, Get, Module, Param, Post } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
-import { RateLimit } from '../../src/common/decorators/index.js';
+import {
+  CourseRole,
+  CurrentUser,
+  OptionalAuth,
+  Public,
+  RateLimit,
+  Roles,
+} from '../../src/common/decorators/index.js';
 import { ApiException } from '../../src/common/filters/index.js';
+import type {
+  AuthenticatedRequest,
+  AuthenticatedUser,
+} from '../../src/common/guards/index.js';
 import { ParseUuidPipe } from '../../src/common/pipes/index.js';
+import { Req } from '@nestjs/common';
 
 export class ProbeItemDto {
   @IsString()
@@ -36,6 +48,7 @@ const dbError = (sqlstate: string, constraint?: string) =>
     },
   });
 
+@Public()
 @Controller('probe')
 export class ProbeController {
   @Post('items')
@@ -52,13 +65,6 @@ export class ProbeController {
   @RateLimit('STRICT')
   login(@Body() dto: ProbeLoginDto) {
     return { ok: true, email: dto.email };
-  }
-
-  /** A route in the PER_CONVERSATION_BURST class, to pin the known gap that the class cannot limit before M8/M10. */
-  @Post('burst')
-  @RateLimit('PER_CONVERSATION_BURST')
-  burst() {
-    return { ok: true };
   }
 
   @Get('throw/:kind')
@@ -88,5 +94,96 @@ export class ProbeController {
   }
 }
 
-@Module({ controllers: [ProbeController] })
+/**
+ * Routes that need authentication (the global guards are secure by default): they exercise the JWT guard, the roles guard, the
+ * course-role guard, the user-keyed rate limits and the check order. Nothing here is public.
+ */
+@Controller('probe-auth')
+export class AuthProbeController {
+  @Get('me')
+  me(@CurrentUser() user: AuthenticatedUser) {
+    return { id: user.id, roles: user.activeRoles };
+  }
+
+  @Get('optional')
+  @OptionalAuth()
+  optional(@CurrentUser() user?: AuthenticatedUser) {
+    return { id: user?.id ?? null };
+  }
+
+  @Get('teacher')
+  @Roles('TEACHER')
+  teacher() {
+    return { ok: true };
+  }
+
+  @Get('admin')
+  @Roles('ADMIN')
+  admin() {
+    return { ok: true };
+  }
+
+  /** Authenticated route with a validated body: the 400 must come after 401, 403 and the role guard. */
+  @Post('teacher-items')
+  @Roles('TEACHER')
+  teacherItem(@Body() dto: ProbeItemDto) {
+    return dto;
+  }
+
+  @Post('conversations/:conversationId/messages')
+  @RateLimit('PER_CONVERSATION_BURST')
+  send(
+    @Param('conversationId') conversationId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { conversationId, userId: user.id };
+  }
+
+  @Get('tight')
+  @RateLimit('TIGHT')
+  tight() {
+    return { ok: true };
+  }
+
+  @Get('courses/:courseId/owner')
+  @CourseRole('OWNER')
+  owner(
+    @Param('courseId') _courseId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return { relationship: request.courseAccess?.relationship };
+  }
+
+  @Get('courses/:courseId/staff')
+  @CourseRole('OWNER', 'ASSISTANT')
+  staff(
+    @Param('courseId') _courseId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return { relationship: request.courseAccess?.relationship };
+  }
+
+  /** Any relationship that can see the course: the 404 and lock gates apply, the role check passes for all. */
+  @Get('courses/:courseId/any')
+  @OptionalAuth()
+  @CourseRole(
+    'OWNER',
+    'ASSISTANT',
+    'STUDENT_ACTIVE',
+    'STUDENT_PENDING',
+    'STUDENT_LEFT',
+    'REMOVED',
+    'REJECTED',
+    'INVITEE',
+    'NONE',
+  )
+  any(
+    @Param('courseId') _courseId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return { relationship: request.courseAccess?.relationship };
+  }
+}
+
+@Module({ controllers: [ProbeController, AuthProbeController] })
 export class ProbeModule {}

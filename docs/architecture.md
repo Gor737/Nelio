@@ -553,7 +553,7 @@ Check order (first failure wins): `429 → 401 → 403 ACCOUNT_SUSPENDED → gua
 
 ### Rate-limit classes
 
-**Strict** (login, registration, forgot-password, resend-verification), **Tight** (user search, DM/group creation, uploads, reports, teacher application, invitations), **Per-conversation burst** (message send, typing), **Default**. A global throttler runs before authentication, so only the `ip` and `email` keys exist at that point. The in-memory store is bounded (at most `COUNT_LIMITS.RATE_LIMIT_MAX_KEYS` windows; when full it sweeps expired windows, then evicts the earliest-started one). **Known gap until M8/M10:** the `user` and `conversation` keys of the Per-conversation burst class need the authenticated user and the conversation, so that class does not limit yet; M8/M10 implement it and must add a test that proves a request over the limit is answered 429.
+**Strict** (login, registration, forgot-password, resend-verification), **Tight** (user search, DM/group creation, uploads, reports, teacher application, invitations), **Per-conversation burst** (message send, typing), **Default**. A global throttler runs before authentication and counts the keys that exist then, `ip` and `email`; the keys that need the user (`user`, and `user + conversation`) are counted by a second guard right after authentication (`429 (ip/email) → 401 → 403 ACCOUNT_SUSPENDED → 429 (user/conversation) → role and course guards`). The same `RateLimiter` service serves REST and Socket.IO, so a user's budget in a conversation is shared by both transports. The in-memory store is bounded (at most `COUNT_LIMITS.RATE_LIMIT_MAX_KEYS` windows; when full it sweeps expired windows, then evicts the earliest-started one). The Per-conversation burst class (30 per user per conversation in 10 s) is implemented and proven in M8 on probe endpoints, over REST and Socket.IO; M10c must apply it to the real message and typing routes and events (`@RateLimit('PER_CONVERSATION_BURST', { conversationParam: 'id' })`, or the limiter inside the gateway) and test them.
 
 ---
 
@@ -594,6 +594,12 @@ Payloads are built by the same mappers as REST and never contain data the recipi
 6. **Recovery by pull:** clients detect `seq` gaps and call `GET …/messages?after=`; they reload `/me/conversations` and notifications on reconnect and refresh the access token before reconnecting. No server-side buffering, no Socket.IO connection state recovery.
 7. **Suspension / logout-everywhere:** after commit, emit `session:revoked`, then disconnect all of the user's sockets. Known limit: a single-device logout does not close that device's open socket.
 8. **Ordering:** clients sort by `seq`; order is a display rule, not a delivery guarantee.
+
+### Gateway rules
+
+- **Every gateway binds the exception filter** (`@UseFilters(AllExceptionsFilter)`): Nest applies global filters to HTTP only, so without it a thrown `ApiException` reaches Nest's default handler. With it, a failed event is acknowledged as `{ ok: false, statusCode, code, message, errors? }` with the REST codes (or an `exception` event when the client sent no acknowledgement callback).
+- The global `ValidationPipe` and guards-by-return (`true` for non-HTTP contexts) apply to gateway payloads; the HTTP guards do not run for sockets, which authenticate in the handshake and re-check the user on every event (`RealtimeService.requireActiveUser`).
+- Handshake Origin policy: an `Origin` header, when present, must equal the frontend origin; an absent one is accepted (same-origin polling and non-browser clients send none, and the token is never in a cookie). Packets are capped at 64 KB.
 
 ### Placement
 

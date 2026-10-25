@@ -122,15 +122,10 @@ describe('RateLimitStore key cap', () => {
   });
 });
 
-// Open items, tracked so they cannot be forgotten. They are NOT done: see docs/roadmap.md M8 and M10.
-describe('open items for M8/M10', () => {
+// Open item, tracked so it cannot be forgotten. NOT done: see docs/roadmap.md M10c. (The Per-conversation burst keys and the
+// guard order were implemented and tested in M8: test/app.e2e-spec.ts and test/common/rate-limiter.spec.ts.)
+describe('open items for M10', () => {
   it.todo(
-    'M8: a PER_CONVERSATION_BURST request over the limit is actually answered 429 (needs the authenticated user and the conversation id as keys)',
-  );
-  it.todo(
-    'M8: the global JWT guard runs after the rate limiter (a flood of requests with bad tokens is answered 429, not 401)',
-  );
-  it.todo(
-    'M10: message send and typing events are limited per user and conversation (REST and Socket.IO)',
+    'M10: message send and typing events are limited per user and conversation on BOTH transports (REST and Socket.IO) in the real chat module',
   );
 });

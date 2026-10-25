@@ -13,12 +13,26 @@
  *   TRUST_PROXY       number of reverse proxies in front, 0-10   (default 0 = do not trust X-Forwarded-*)
  *   LOG_LEVEL         debug | info | warn | error                (default info)
  *   SWAGGER_ENABLED   true | false                               (default true outside production, false in production)
+ *   SMTP_HOST         host name                                  (required in production; default 127.0.0.1 = Mailpit)
+ *   SMTP_PORT         1-65535                                    (default 1025 = Mailpit)
+ *   SMTP_SECURE       true | false  implicit TLS (port 465)      (default false; STARTTLS is used when the server offers it)
+ *   SMTP_USER, SMTP_PASSWORD   both or neither                   (optional; the password is never logged)
+ *   MAIL_FROM         sender address, "Name <a@b>" or "a@b"      (required in production; default Nelio <no-reply@nelio.local>)
  */
 export const NODE_ENVS = ['development', 'test', 'production'] as const;
 export type NodeEnv = (typeof NODE_ENVS)[number];
 
 export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 export type LogLevel = (typeof LOG_LEVELS)[number];
+
+export interface MailConfig {
+  readonly host: string;
+  readonly port: number;
+  readonly secure: boolean;
+  readonly user: string | undefined;
+  readonly password: string | undefined;
+  readonly from: string;
+}
 
 export interface AppConfig {
   readonly nodeEnv: NodeEnv;
@@ -29,6 +43,7 @@ export interface AppConfig {
   readonly trustProxy: number;
   readonly logLevel: LogLevel;
   readonly swaggerEnabled: boolean;
+  readonly mail: MailConfig;
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -43,6 +58,11 @@ export class ConfigError extends Error {
 }
 
 const DEV_FRONTEND_ORIGIN = 'http://localhost:3001';
+const DEV_MAIL_FROM = 'Nelio <no-reply@nelio.local>';
+/** The numeric loopback address, not the name `localhost`: resolving the name stalled the first SMTP connection by about 5 s. */
+const DEV_SMTP_HOST = '127.0.0.1';
+/** `a@b.c` or `Display Name <a@b.c>`; no line breaks (header injection) and exactly one address. */
+const MAIL_FROM = /^(?:[^<>\r\n@]+ <[^<>\s@]+@[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+)$/;
 const PLACEHOLDER =
   /change[_-]?me|placeholder|example|secret-here|your[_-]?secret|^(.)\1+$/i;
 
@@ -148,6 +168,39 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     else problems.push('SWAGGER_ENABLED must be true or false');
   }
 
+  const smtpHost = env.SMTP_HOST ?? '';
+  if (smtpHost === '' && production)
+    problems.push('SMTP_HOST is required in production');
+  const smtpPort = integer(
+    env.SMTP_PORT,
+    'SMTP_PORT',
+    1,
+    65535,
+    1025,
+    problems,
+  );
+  let smtpSecure = false;
+  if (env.SMTP_SECURE !== undefined && env.SMTP_SECURE !== '') {
+    if (['true', 'false'].includes(env.SMTP_SECURE))
+      smtpSecure = env.SMTP_SECURE === 'true';
+    else problems.push('SMTP_SECURE must be true or false');
+  }
+  const smtpUser = env.SMTP_USER === '' ? undefined : env.SMTP_USER;
+  const smtpPassword = env.SMTP_PASSWORD === '' ? undefined : env.SMTP_PASSWORD;
+  if ((smtpUser === undefined) !== (smtpPassword === undefined))
+    problems.push(
+      'SMTP_USER and SMTP_PASSWORD must be set together or not at all',
+    );
+  let mailFrom = env.MAIL_FROM ?? '';
+  if (mailFrom === '') {
+    if (production) problems.push('MAIL_FROM is required in production');
+    mailFrom = DEV_MAIL_FROM;
+  } else if (!MAIL_FROM.test(mailFrom)) {
+    problems.push(
+      'MAIL_FROM must be an address like no-reply@example.com or "Nelio <no-reply@example.com>"',
+    );
+  }
+
   if (problems.length > 0) throw new ConfigError(problems);
   return {
     nodeEnv,
@@ -158,5 +211,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     trustProxy,
     logLevel,
     swaggerEnabled,
+    mail: {
+      host: smtpHost === '' ? DEV_SMTP_HOST : smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      user: smtpUser,
+      password: smtpPassword,
+      from: mailFrom,
+    },
   };
 }

@@ -7,5 +7,6 @@ export {
   loadConfig,
   type AppConfig,
   type LogLevel,
+  type MailConfig,
   type NodeEnv,
 } from './app-config.js';

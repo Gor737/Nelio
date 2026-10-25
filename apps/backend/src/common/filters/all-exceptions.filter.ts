@@ -61,12 +61,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
-    if (host.getType() !== 'http') throw exception; // WebSocket errors are rendered by the gateway filter (M8)
+    const type = host.getType();
+    if (type === 'ws') return this.catchWs(exception, host);
+    if (type !== 'http') throw exception;
     const http = host.switchToHttp();
     const request = http.getRequest<Request>();
     const response = http.getResponse<Response>();
 
-    const rendered = this.render(exception, request);
+    const rendered = this.render(exception, request.path);
     if (response.headersSent) return;
     response.status(rendered.status).json({
       statusCode: rendered.status,
@@ -76,7 +78,36 @@ export class AllExceptionsFilter implements ExceptionFilter {
     });
   }
 
-  private render(exception: unknown, request: Request): Rendered {
+  /**
+   * Socket.IO events (architecture section 14): the failure is delivered as `{ ok: false, statusCode, code, message, errors? }`,
+   * the same codes as REST. To the event's acknowledgement callback when the client asked for one, otherwise as an `exception`
+   * event to that client. Nothing is ever thrown back into Socket.IO, so a bad event cannot take the connection down.
+   */
+  private catchWs(exception: unknown, host: ArgumentsHost): void {
+    const rendered = this.render(exception, 'ws-event');
+    const body = {
+      ok: false as const,
+      statusCode: rendered.status,
+      code: rendered.code,
+      message: rendered.message,
+      ...(rendered.errors ? { errors: rendered.errors } : {}),
+    };
+    const args = host.getArgs<unknown[]>();
+    // Nest passes [client, data, ack?, pattern]: the acknowledgement callback is the only function among them.
+    const ack = args.find(
+      (arg): arg is (payload: typeof body) => void => typeof arg === 'function',
+    );
+    if (ack) {
+      ack(body);
+      return;
+    }
+    const client = host
+      .switchToWs()
+      .getClient<{ emit?: (event: string, payload: unknown) => void }>();
+    client.emit?.('exception', body);
+  }
+
+  private render(exception: unknown, path: string): Rendered {
     if (exception instanceof ApiException) {
       return {
         status: exception.status,
@@ -93,21 +124,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn({
         event: 'database_conflict',
         constraint: constraintOf(exception),
-        path: request.path,
+        path,
       });
       return byCode('RESOURCE_CONFLICT');
     }
     if (isDeadlock(exception) || isSerializationFailure(exception)) {
       this.logger.warn({
         event: 'transaction_retries_exhausted',
-        path: request.path,
+        path,
       });
       return byCode('SERVICE_UNAVAILABLE');
     }
     if (isLockTimeout(exception) || isStatementTimeout(exception)) {
       this.logger.error({
         event: 'database_timeout',
-        path: request.path,
+        path,
         requestId: currentRequestId(),
       });
       return byCode('SERVICE_UNAVAILABLE');
@@ -116,7 +147,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error({
         event: 'database_check_violation',
         constraint: constraintOf(exception),
-        path: request.path,
+        path,
         requestId: currentRequestId(),
         note: 'A service sent data that the database rejects; validation upstream is missing.',
       });
@@ -125,7 +156,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     this.logger.error({
       event: 'unhandled_exception',
-      path: request.path,
+      path,
       requestId: currentRequestId(),
       error: exception,
     });

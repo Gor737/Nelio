@@ -30,6 +30,14 @@ describe('configuration', () => {
       trustProxy: 0,
       logLevel: 'info',
       swaggerEnabled: true,
+      mail: {
+        host: '127.0.0.1', // Mailpit
+        port: 1025,
+        secure: false,
+        user: undefined,
+        password: undefined,
+        from: 'Nelio <no-reply@nelio.local>',
+      },
     });
   });
 
@@ -94,6 +102,8 @@ describe('configuration', () => {
           NODE_ENV: 'production',
           JWT_SECRET: valid.JWT_SECRET,
           FRONTEND_ORIGIN: 'https://app.example.com',
+          SMTP_HOST: 'smtp.example.com',
+          MAIL_FROM: 'no-reply@example.com',
           POSTGRES_USER: 'u',
           POSTGRES_PASSWORD: 'p',
         }),
@@ -130,6 +140,8 @@ describe('configuration', () => {
       NODE_ENV: 'production',
       ...valid,
       FRONTEND_ORIGIN: 'https://app.example.com',
+      SMTP_HOST: 'smtp.example.com',
+      MAIL_FROM: 'Nelio <no-reply@example.com>',
     };
 
     it('requires FRONTEND_ORIGIN and turns Swagger off by default', () => {
@@ -204,7 +216,104 @@ describe('configuration', () => {
         'JWT_SECRET is required',
         'FRONTEND_ORIGIN is required in production',
         'LOG_LEVEL must be one of debug, info, warn, error',
+        'SMTP_HOST is required in production',
+        'MAIL_FROM is required in production',
       ]);
+    });
+  });
+
+  describe('mail (SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD, MAIL_FROM)', () => {
+    it('production requires the SMTP host and the sender, and nothing else', () => {
+      expect(
+        problemsOf({
+          NODE_ENV: 'production',
+          ...valid,
+          FRONTEND_ORIGIN: 'https://app.example.com',
+        }),
+      ).toEqual([
+        'SMTP_HOST is required in production',
+        'MAIL_FROM is required in production',
+      ]);
+    });
+
+    it('reads every setting', () => {
+      expect(
+        loadConfig({
+          ...valid,
+          SMTP_HOST: 'smtp.example.com',
+          SMTP_PORT: '465',
+          SMTP_SECURE: 'true',
+          SMTP_USER: 'mailer',
+          SMTP_PASSWORD: 'smtp-pass',
+          MAIL_FROM: 'Nelio <no-reply@example.com>',
+        }).mail,
+      ).toEqual({
+        host: 'smtp.example.com',
+        port: 465,
+        secure: true,
+        user: 'mailer',
+        password: 'smtp-pass',
+        from: 'Nelio <no-reply@example.com>',
+      });
+    });
+
+    it('the user and the password must be given together', () => {
+      expect(problemsOf({ ...valid, SMTP_USER: 'mailer' })).toEqual([
+        'SMTP_USER and SMTP_PASSWORD must be set together or not at all',
+      ]);
+      expect(problemsOf({ ...valid, SMTP_PASSWORD: 'x' })).toEqual([
+        'SMTP_USER and SMTP_PASSWORD must be set together or not at all',
+      ]);
+      expect(
+        loadConfig({ ...valid, SMTP_USER: '', SMTP_PASSWORD: '' }).mail.user,
+      ).toBeUndefined();
+    });
+
+    it.each([
+      ['SMTP_PORT', 'abc', 'SMTP_PORT must be an integer between 1 and 65535'],
+      [
+        'SMTP_PORT',
+        '70000',
+        'SMTP_PORT must be an integer between 1 and 65535',
+      ],
+      ['SMTP_SECURE', 'yes', 'SMTP_SECURE must be true or false'],
+      [
+        'MAIL_FROM',
+        'not-an-address',
+        'MAIL_FROM must be an address like no-reply@example.com or "Nelio <no-reply@example.com>"',
+      ],
+      [
+        'MAIL_FROM',
+        'a@example.com\r\nBcc: b@example.com',
+        'MAIL_FROM must be an address like no-reply@example.com or "Nelio <no-reply@example.com>"',
+      ],
+      [
+        'MAIL_FROM',
+        'a@example.com, b@example.com',
+        'MAIL_FROM must be an address like no-reply@example.com or "Nelio <no-reply@example.com>"',
+      ],
+    ])('rejects %s=%j', (name, value, problem) => {
+      expect(problemsOf({ ...valid, [name]: value })).toEqual([problem]);
+    });
+
+    it('accepts a plain address and a display-name address as the sender', () => {
+      expect(
+        loadConfig({ ...valid, MAIL_FROM: 'no-reply@example.com' }).mail.from,
+      ).toBe('no-reply@example.com');
+      expect(
+        loadConfig({
+          ...valid,
+          MAIL_FROM: 'Nelio Platform <no-reply@example.com>',
+        }).mail.from,
+      ).toBe('Nelio Platform <no-reply@example.com>');
+    });
+
+    it('never puts the SMTP password into an error message', () => {
+      const messages = problemsOf({
+        ...valid,
+        SMTP_PASSWORD: 'super-secret-smtp-password',
+      }).join(' ');
+      expect(messages).not.toContain('super-secret-smtp-password');
     });
   });
 });

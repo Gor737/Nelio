@@ -1,13 +1,24 @@
 // HTTP behavior of the shared infrastructure (M6), without a database: real global guard/filter/pipe wiring and the real
 // configureApp (prefix, helmet, CORS, request id, Swagger) around a probe module.
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { APP_GUARD } from '@nestjs/core';
+import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { configureApp } from '../src/app.setup.js';
 import { GLOBAL_PROVIDERS } from '../src/common/global-providers.js';
+import {
+  Authenticator,
+  RateLimiter,
+  TokenVerifier,
+} from '../src/common/guards/index.js';
 import { AppConfigModule } from '../src/infrastructure/config/index.js';
+import { MAIL_TRANSPORT } from '../src/infrastructure/mail/index.js';
 import { captureLogs, expectNoneLogged } from './support/log-capture.js';
+import { FakeAuthUserLoader, fakeAuthProviders } from './support/fake-auth.js';
+import { ProbeMailModule } from './support/probe-mail.js';
 import { ProbeModule } from './support/probe.module.js';
+import { mintAccessToken } from './support/token-minter.js';
 
 const env = {
   NODE_ENV: 'test',
@@ -17,12 +28,25 @@ const env = {
   SWAGGER_ENABLED: 'true',
 };
 
+const loader = new FakeAuthUserLoader();
+const bearer = (
+  userId: string,
+  options: Parameters<typeof mintAccessToken>[1] = {},
+) =>
+  `Bearer ${mintAccessToken(userId, { secret: env.JWT_SECRET, ...options })}`;
+
 async function createApp(
   extraEnv: Record<string, string> = {},
 ): Promise<NestExpressApplication> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppConfigModule.forRoot({ ...env, ...extraEnv }), ProbeModule],
-    providers: GLOBAL_PROVIDERS,
+    providers: [
+      ...GLOBAL_PROVIDERS,
+      TokenVerifier,
+      Authenticator,
+      RateLimiter,
+      ...fakeAuthProviders(loader), // no database in this suite: the real loader and course access are tested in the integration suite
+    ],
   }).compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
@@ -230,17 +254,6 @@ describe('rate limiting', () => {
     });
   });
 
-  // KNOWN GAP, not fixed (docs/roadmap.md M8/M10): PER_CONVERSATION_BURST is keyed by user + conversation, and neither exists
-  // before authentication, so today the guard has nothing to count and the class does NOT limit. This test pins the current
-  // behavior so the gap cannot be forgotten: when M8/M10 implement the keys it must fail, and be replaced by a test that
-  // proves the 31st request in 10 seconds is answered 429.
-  it('KNOWN GAP: PER_CONVERSATION_BURST does not limit anything yet', async () => {
-    for (let i = 0; i < 40; i++)
-      await request(app.getHttpServer())
-        .post('/api/v1/probe/burst')
-        .expect(201);
-  });
-
   it('does not let a STRICT flood use up the DEFAULT budget', async () => {
     await request(app.getHttpServer())
       .get(`/api/v1/probe/items/${UUID}`)
@@ -319,6 +332,59 @@ describe('OpenAPI error contract', () => {
   });
 });
 
+describe('OpenAPI security and auth errors follow the guard decorators', () => {
+  let document: {
+    paths: Record<string, Record<string, any>>;
+    components: any;
+    info: any;
+  };
+  beforeAll(async () => {
+    document = (
+      await request(app.getHttpServer()).get('/api/docs-json').expect(200)
+    ).body;
+  });
+  const op = (method: string, path: string) => document.paths[path][method];
+
+  it('a @Public() operation has no security requirement and no 401/403', () => {
+    const publicOp = op('get', '/api/v1/probe/items/{id}');
+    expect(publicOp.security).toEqual([]);
+    expect(publicOp.responses['401']).toBeUndefined();
+    expect(publicOp.responses['403']).toBeUndefined();
+  });
+
+  it('an operation that needs a login requires the bearer token and documents 401 and 403', () => {
+    const secured = op('get', '/api/v1/probe-auth/me');
+    expect(secured.security).toEqual([{ 'access-token': [] }]);
+    expect(
+      secured.responses['401'].content['application/json'].schema.$ref,
+    ).toMatch(/ErrorResponseDto$/);
+    expect(secured.responses['403'].description).toMatch(/ACCOUNT_SUSPENDED/);
+  });
+
+  it('an @OptionalAuth() operation accepts anonymous callers or a bearer token', () => {
+    expect(op('get', '/api/v1/probe-auth/optional').security).toEqual([
+      {},
+      { 'access-token': [] },
+    ]);
+  });
+
+  it('operations with a body or path parameters also document 400 VALIDATION_FAILED; those without do not', () => {
+    expect(op('post', '/api/v1/probe/items').responses['400']).toBeDefined();
+    expect(
+      op('get', '/api/v1/probe-auth/courses/{courseId}/owner').responses['400'],
+    ).toBeDefined();
+    expect(op('get', '/api/v1/probe-auth/me').responses['400']).toBeUndefined();
+  });
+
+  it('the internal markers are removed from the published document', () => {
+    expect(JSON.stringify(document)).not.toContain('x-nelio');
+  });
+
+  it('the API description explains authentication', () => {
+    expect(document.info.description).toMatch(/Authorization: Bearer/);
+  });
+});
+
 describe('security and routing', () => {
   it('sets helmet headers and a request id on API responses', async () => {
     const res = await request(app.getHttpServer())
@@ -375,5 +441,273 @@ describe('security and routing', () => {
     expect(
       res.body.components.schemas.ErrorResponseDto.properties.code.enum,
     ).toContain('VALIDATION_FAILED');
+  });
+});
+
+// ---- M8: check order, guard order, user-keyed rate limits ---------------------------------------------------------------------
+
+describe('check order: throttle -> 401 -> ACCOUNT_SUSPENDED -> guards -> input shape (Decision 140)', () => {
+  let ordered: NestExpressApplication;
+  beforeAll(async () => {
+    ordered = await createApp();
+  });
+  afterAll(async () => {
+    await ordered.close();
+  });
+
+  const invalidBody = { name: '', admin: true }; // would be a 400 if it were ever looked at
+  const post = (authorization?: string) => {
+    const req = request(ordered.getHttpServer())
+      .post('/api/v1/probe-auth/teacher-items')
+      .send(invalidBody);
+    return authorization ? req.set('Authorization', authorization) : req;
+  };
+
+  it('no token: 401, although the body is invalid too', async () => {
+    const res = await post().expect(401);
+    expect(res.body.code).toBe('UNAUTHENTICATED');
+  });
+
+  it('suspended user: 403 ACCOUNT_SUSPENDED, before the role is looked at and before the body is validated', async () => {
+    const user = loader.add({ status: 'SUSPENDED', roles: ['STUDENT'] });
+    const res = await post(bearer(user.id)).expect(403);
+    expect(res.body.code).toBe('ACCOUNT_SUSPENDED');
+  });
+
+  it('a student on a Teacher route: 403 TEACHER_NOT_APPROVED, before the body is validated', async () => {
+    const user = loader.add({ roles: ['STUDENT'] });
+    const res = await post(bearer(user.id)).expect(403);
+    expect(res.body.code).toBe('TEACHER_NOT_APPROVED');
+  });
+
+  it('an active Teacher with an invalid body: only now 400 VALIDATION_FAILED', async () => {
+    const user = loader.add({ roles: ['STUDENT', 'TEACHER'] });
+    const res = await post(bearer(user.id)).expect(400);
+    expect(res.body.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('an active Teacher with a valid body passes all the way', async () => {
+    const user = loader.add({ roles: ['STUDENT', 'TEACHER'] });
+    await request(ordered.getHttpServer())
+      .post('/api/v1/probe-auth/teacher-items')
+      .set('Authorization', bearer(user.id))
+      .send({ name: 'ok' })
+      .expect(201);
+  });
+
+  it('the throttle comes first: once the limit is spent, even a request that would be a 401 is a 429', async () => {
+    // DEFAULT is 120 per 60 s per IP. Spend it with cheap unauthenticated requests, then send a bad token.
+    const app429 = await createApp();
+    try {
+      for (let i = 0; i < 120; i++)
+        await request(app429.getHttpServer())
+          .get('/api/v1/probe-auth/me')
+          .expect(401);
+      const res = await request(app429.getHttpServer())
+        .get('/api/v1/probe-auth/me')
+        .set('Authorization', 'Bearer not-a-token')
+        .expect(429);
+      expect(res.body.code).toBe('TOO_MANY_REQUESTS');
+    } finally {
+      await app429.close();
+    }
+  });
+});
+
+describe('the JWT guard runs after the rate limiter (global guard order)', () => {
+  it('a flood of requests with invalid tokens is answered 429, not 401, and no token is verified or user loaded once limited', async () => {
+    const flooded = await createApp();
+    try {
+      const loadsBefore = loader.loads;
+      const statuses: number[] = [];
+      for (let i = 0; i < 125; i++) {
+        const res = await request(flooded.getHttpServer())
+          .get('/api/v1/probe-auth/me')
+          .set('Authorization', 'Bearer forged.token.value');
+        statuses.push(res.status);
+      }
+      expect(statuses.slice(0, 120).every((s) => s === 401)).toBe(true);
+      expect(statuses.slice(120).every((s) => s === 429)).toBe(true);
+      // Forged tokens never reach the database; and the limited requests never reached the guard at all.
+      expect(loader.loads).toBe(loadsBefore);
+    } finally {
+      await flooded.close();
+    }
+  });
+
+  it('the global guards are registered in the documented order', () => {
+    const names = (
+      GLOBAL_PROVIDERS as { provide?: unknown; useClass?: { name: string } }[]
+    )
+      .filter((p) => p.provide === APP_GUARD)
+      .map((p) => p.useClass?.name);
+    expect(names).toEqual([
+      'RateLimitGuard',
+      'JwtAuthGuard',
+      'UserRateLimitGuard',
+      'RolesGuard',
+      'CourseRoleGuard',
+    ]);
+  });
+});
+
+describe('Per-conversation burst actually limits (closes the M6 gap, Decision 167)', () => {
+  let burst: NestExpressApplication;
+  beforeAll(async () => {
+    burst = await createApp();
+  });
+  afterAll(async () => {
+    await burst.close();
+  });
+
+  const conversationA = '018f0000-0000-7000-8000-00000000000a';
+  const conversationB = '018f0000-0000-7000-8000-00000000000b';
+  const send = (userId: string, conversationId: string) =>
+    request(burst.getHttpServer())
+      .post(`/api/v1/probe-auth/conversations/${conversationId}/messages`)
+      .set('Authorization', bearer(userId));
+
+  it('the 31st request in 10 seconds by one user in one conversation is 429 with Retry-After; the 30th is not', async () => {
+    const user = loader.add();
+    for (let i = 1; i <= 30; i++)
+      await send(user.id, conversationA).expect(201);
+    const res = await send(user.id, conversationA).expect(429);
+    expect(res.body).toMatchObject({
+      statusCode: 429,
+      code: 'TOO_MANY_REQUESTS',
+    });
+    expect(Number(res.headers['retry-after'])).toBeGreaterThanOrEqual(1);
+    expect(Number(res.headers['retry-after'])).toBeLessThanOrEqual(10);
+  });
+
+  it('the budget is per user AND per conversation: the same user elsewhere, and another user here, are unaffected', async () => {
+    const [busy, other] = [loader.add(), loader.add()];
+    for (let i = 0; i < 31; i++) await send(busy.id, conversationA);
+    await send(busy.id, conversationA).expect(429);
+    await send(busy.id, conversationB).expect(201); // another conversation
+    await send(other.id, conversationA).expect(201); // another user
+  });
+
+  it('is applied after authentication: an unauthenticated flood is a 401 and never consumes a user budget', async () => {
+    for (let i = 0; i < 40; i++)
+      await request(burst.getHttpServer())
+        .post(`/api/v1/probe-auth/conversations/${conversationA}/messages`)
+        .expect(401);
+  });
+
+  it('TIGHT is keyed by user as well as by IP', async () => {
+    const tight = await createApp();
+    try {
+      const [a, b] = [loader.add(), loader.add()];
+      const hit = (id: string) =>
+        request(tight.getHttpServer())
+          .get('/api/v1/probe-auth/tight')
+          .set('Authorization', bearer(id));
+      for (let i = 0; i < 20; i++) await hit(a.id).expect(200);
+      await hit(a.id).expect(429);
+      // b shares the IP counter (21 requests so far, limit 20): the ip key limits b as well.
+      await hit(b.id).expect(429);
+    } finally {
+      await tight.close();
+    }
+  });
+});
+
+// ---- M8: mail --------------------------------------------------------------------------------------------------------------
+
+describe('a mail failure does not break the request (registration-shaped endpoint)', () => {
+  const sendMail =
+    jest.fn<(message: { to: string; subject: string }) => Promise<unknown>>();
+
+  async function createMailApp(): Promise<NestExpressApplication> {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppConfigModule.forRoot(env), ProbeMailModule],
+      providers: [
+        ...GLOBAL_PROVIDERS,
+        TokenVerifier,
+        Authenticator,
+        RateLimiter,
+        ...fakeAuthProviders(loader),
+      ],
+    })
+      .overrideProvider(MAIL_TRANSPORT)
+      .useValue({ sendMail })
+      .compile();
+    const mailApp = moduleRef.createNestApplication<NestExpressApplication>();
+    configureApp(mailApp);
+    await mailApp.init();
+    return mailApp;
+  }
+
+  let mailApp: NestExpressApplication;
+  beforeAll(async () => {
+    mailApp = await createMailApp();
+  });
+  afterAll(async () => {
+    await mailApp.close();
+  });
+  beforeEach(() => sendMail.mockReset());
+
+  const register = (email = 'new.user@example.test') =>
+    request(mailApp.getHttpServer())
+      .post('/api/v1/probe-mail/register')
+      .send({ email });
+
+  it('answers 202 and sends the email when the mail server works', async () => {
+    sendMail.mockResolvedValue({ accepted: ['new.user@example.test'] });
+    await register().expect(202);
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    expect(sendMail.mock.calls[0][0]).toMatchObject({
+      to: 'new.user@example.test',
+      subject: 'Confirm your email address for Nelio',
+    });
+  });
+
+  it('answers the same 202 when the mail server refuses the connection', async () => {
+    sendMail.mockRejectedValue(
+      Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:1025'), {
+        code: 'ECONNREFUSED',
+      }),
+    );
+    const res = await register().expect(202);
+    expect(res.body).toEqual({});
+  });
+
+  it('answers the same 202 when the mail server rejects the recipient, or the transport throws synchronously', async () => {
+    sendMail.mockRejectedValue(
+      Object.assign(new Error('550 no such user'), { responseCode: 550 }),
+    );
+    await register().expect(202);
+    sendMail.mockImplementation(() => {
+      throw new Error('transport exploded');
+    });
+    await register().expect(202);
+  });
+
+  it('the response is identical whether or not the email could be sent (nothing to tell an address apart)', async () => {
+    sendMail.mockResolvedValue({});
+    const ok = await register().expect(202);
+    sendMail.mockRejectedValue(new Error('down'));
+    const failed = await register().expect(202);
+    expect(failed.body).toEqual(ok.body);
+    expect(failed.status).toBe(ok.status);
+  });
+
+  it('the failure is logged without the address, the link or the token', async () => {
+    sendMail.mockRejectedValue(
+      Object.assign(new Error('failed for new.user@example.test'), {
+        code: 'ESOCKET',
+      }),
+    );
+    const logs = captureLogs();
+    try {
+      await register('new.user@example.test').expect(202);
+      const output = logs.output();
+      expect(output).toContain('mail_send_failed');
+      expect(output).not.toContain('new.user@example.test');
+      expect(output).not.toContain('probe-token');
+    } finally {
+      logs.restore();
+    }
   });
 });

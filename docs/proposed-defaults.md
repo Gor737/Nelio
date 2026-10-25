@@ -112,7 +112,7 @@ The 12 types are documented; the recipient is named for most. Not named: `ENROLL
 
 ## 9. Not yet decided (will be proposed when the module is built)
 
-The character set of `ContentBlock.video_external_id` (provider-specific validation, M10b; its length is decided in section 11), slug generation rules for `Category`/`Tag`, password-reset and verification email wording, and the audit `metadata` shape. None of them is encoded yet. (The `Report` snapshot size is decided in section 11.)
+The character set of `ContentBlock.video_external_id` (provider-specific validation, M10b; its length is decided in section 11), slug generation rules for `Category`/`Tag`, and the audit `metadata` shape. (The password-reset and verification email wording is proposed in section 12.) None of them is encoded yet. (The `Report` snapshot size is decided in section 11.)
 
 ## 10. Added in M6 (approved by the owner 2026-10-25, after review)
 
@@ -145,6 +145,35 @@ M7 built schema groups G2-G5. The documents fix the tables, columns, CHECKs and 
 - **Foreign-key `ON UPDATE`** is Prisma's default `CASCADE` everywhere (ids never change).
 - **Open-report uniqueness** is per reporter and target: one `OPEN` report of a given message, and one of a given user, per reporter. A new report is possible once the previous one is `DISMISSED` or `ACTIONED`.
 
+## 12. Added in M8 (PROPOSED, pending owner review)
+
+M8 built the guards, the course-access service, the Socket.IO server and the mail service. The documents fix the algorithm and the
+codes (architecture sections 11, 12 and 14, Decisions 107, 108, 119, 121, 136, 140, 152, 167); the points below were not
+specified and were decided by the implementer. They are **not yet approved**.
+
+**Authentication and authorization**
+- **Check order with user-keyed rate limits.** The rate limiter has two phases. Keys that exist before authentication (`ip`, `email`) are counted by the first global guard, so a flood is still a 429 before any token is verified. Keys that need the user (`user`, `user + conversation`) can only be counted after authentication, so the order is `429 (ip/email) → 401 → 403 ACCOUNT_SUSPENDED → 429 (user/conversation) → role and course guards → 400 → 409`. This is Decision 167's follow-up (the gap tracked since M6) and is a clarification of the literal "429 first" wording of Decision 140 for the user-keyed classes.
+- **Per-conversation burst is one counter per user per conversation** (30 in 10 s), not one counter for the whole conversation; a missing conversation id is counted in a shared "no conversation" bucket (stricter, never unlimited). REST and Socket.IO share the same budget through one `RateLimiter` service.
+- **Bearer header**: exactly `Authorization: Bearer <token>`; any other scheme or shape is 401. A missing token and an invalid token give the identical response.
+- **Token header/claims**: `alg` must be exactly `HS256`; `typ`, if present, must be `JWT`; the signature must be canonical base64url; `sub` must be a UUID; `iat` and `exp` must be integers; an `exp` equal to "now" is expired; the token may not exceed 4096 characters. No clock-skew leeway (one server).
+- **`@Roles` on a Teacher route**: anyone without an `ACTIVE` Teacher role, including an Admin without the Teacher role, gets `TEACHER_NOT_APPROVED`; on any other role route the code is `FORBIDDEN`.
+- **Course visibility** (the 108-case grid in `test/common/course-access.spec.ts`): Owner and Assistants always see the course; ACTIVE and LEFT students see published and archived courses (a LEFT student also sees an invitation-only page); a PENDING student sees only a published course (once archived it is hidden, although the request stays); an invitee sees only a published course; REMOVED, REJECTED and strangers see only a published course whose policy is not invitation-only; a lock shows students 403 `COURSE_ADMIN_LOCKED` and everyone else 404. A REMOVED or REJECTED student with a valid pending invitation is an INVITEE. Two of these are readings of Decisions 119/121: a PENDING student does not see an archived course, and REMOVED/REJECTED students are treated as ordinary visitors.
+- **`@CourseRole` guard** answers a malformed `courseId` with 400 itself (before any query); everything else follows the check list (404, then the lock gate, then 403 `FORBIDDEN`).
+- **Public routes** must be marked `@Public()`; the only one today is `GET /health`. The OpenAPI document derives each operation's security (`[]` for public, optional for `@OptionalAuth`, bearer otherwise) and the 400/401/403/429/500/503 responses from the same decorators.
+
+**Socket.IO**
+- **Handshake Origin**: when an `Origin` header is present it must equal `FRONTEND_ORIGIN` (403 otherwise); an absent `Origin` is accepted, because same-origin polling requests and non-browser clients omit it and a browser always sends it on the WebSocket upgrade. The token is read only from the `auth` payload.
+- **Per-event re-check** (`RealtimeService.requireActiveUser`): the user must still exist, not be suspended, and the token's `iat` must not be before `tokens_valid_after`. The token's expiry is not re-checked (a connection outlives its 15-minute token; the client refreshes before reconnecting).
+- **Errors on events** are acknowledgements `{ ok: false, statusCode, code, message, errors? }` with the REST codes, or an `exception` event when the client sent no acknowledgement callback. Nest does not apply the global exception filter to gateways, so **every gateway must bind `@UseFilters(AllExceptionsFilter)`** (a roadmap item for the Chat gateway in M10c).
+- **Packet size cap** 64 KB (`MAX_SOCKET_PAYLOAD_BYTES`); a larger packet closes the connection.
+- **`session:revoked`** is sent to every device, with an empty payload, and then the sockets are closed.
+
+**Mail**
+- **Wording and pages**: English text; the links go to the frontend pages `/verify-email?token=…`, `/reset-password?token=…`, `/login` and `/forgot-password` under `FRONTEND_ORIGIN`. The sender defaults to `Nelio <no-reply@nelio.local>` outside production. Subjects: "Confirm your email address for Nelio", "Reset your Nelio password", "You already have a Nelio account".
+- **Delivery contract**: `MailService` never throws; each method resolves `true` or `false`. A recipient that is not a single plain address is refused (header injection). The whole send has a 15 s deadline on top of the transport's 10 s timeouts. The log names the template and the SMTP error code only, never the address, the link or the token.
+- **Environment variables**: `SMTP_HOST` (default `127.0.0.1` = Mailpit; required in production), `SMTP_PORT` (default 1025), `SMTP_SECURE` (default false), `SMTP_USER` and `SMTP_PASSWORD` (both or neither), `MAIL_FROM` (required in production). In production STARTTLS is required unless `SMTP_SECURE=true`. The numeric loopback address is the default because resolving `localhost` delayed the first connection by about 5 seconds.
+- **Token validity in the email** comes from the caller (`validForHours`); the Auth module must pass 24 for verification and 1 for password reset (architecture section 11). `TIME_LIMITS.EMAIL_TOKEN_TTL_MS` currently holds a single value (1 hour), which does not match the 24-hour verification token; M11a reconciles it.
+
 ## Approval and changes
 
-All values in sections 1–9 were approved by the owner as a set on 2026-10-25 and are used as written. Section 10 was approved on 2026-10-25 after review (Decisions 166 and 167). Section 11 (M7) was approved on 2026-10-26 after review. To change one later: edit the constant, update this file, and add a migration if it is a *SQL CHECK*; record it in `decision.log.md` if it affects the schema or the API contract.
+All values in sections 1–9 were approved by the owner as a set on 2026-10-25 and are used as written. Section 10 was approved on 2026-10-25 after review (Decisions 166 and 167). Section 11 (M7) was approved on 2026-10-26 after review. **Section 12 (M8) is awaiting review.** To change one later: edit the constant, update this file, and add a migration if it is a *SQL CHECK*; record it in `decision.log.md` if it affects the schema or the API contract.

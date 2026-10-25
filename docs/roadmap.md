@@ -82,6 +82,8 @@
   - [ ] Unique violations handled outside the failed transaction
   - [ ] Lesson reads use `visibleLessonWhere` (decision 103)
   - [ ] No Prisma calls in gateways or controllers
+  - [ ] Every new route is secure by default: a public route carries `@Public()` and a route without it needs a token; the OpenAPI document shows the security and the error responses of each operation
+  - [ ] Every WebSocket gateway binds `@UseFilters(AllExceptionsFilter)` (Nest does not apply the global filter to gateways)
   - [ ] Cross-module writes go through the owner's service (single Progress exception)
   - [ ] Every request DTO field has a validator decorator
   - [ ] Progress reads are one SQL statement
@@ -312,12 +314,12 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [x] Event emitted in a transaction is delivered only after commit, never after rollback
 - [x] Health responds
 
-**Verify:** `ValidationPipe` on Socket.IO gateways (tested in M8, still open); throttler behind a proxy (done: `TRUST_PROXY=1` limits each `X-Forwarded-For` client separately, `TRUST_PROXY=0` ignores the header).
+**Verify:** `ValidationPipe` on Socket.IO gateways (done in M8); throttler behind a proxy (done: `TRUST_PROXY=1` limits each `X-Forwarded-For` client separately, `TRUST_PROXY=0` ignores the header).
 
 **Status (2026-10-25):** implemented in `apps/backend/src/{app.setup.ts,app.module.ts,main.ts,openapi-export.ts}`, `src/common/{filters,pipes,guards,decorators,global-providers.ts}` and `src/infrastructure/{config,database,audit,events,health,logging}`. After the owner's review the same day (Decisions 166 and 167) it was revised: exhausted deadlock retries and database timeouts → 503 `SERVICE_UNAVAILABLE` (no `Retry-After`); JSON-body 413/415 → 400 `VALIDATION_FAILED`; the rate-limit store is bounded (`COUNT_LIMITS.RATE_LIMIT_MAX_KEYS`) and unit-tested with a fake clock; logging moved to `infrastructure/logging`; `GET /health` is unprefixed; `start`, `start:dev` and `start:debug` load the root `.env` with `--env-file-if-exists=../../.env`.
 - Tests: `test/infrastructure/config.spec.ts`, `test/infrastructure/logging.spec.ts`, `test/common/rate-limit.store.spec.ts`, `test/app.e2e-spec.ts` (no database), `test/integration/database.integration-spec.ts` (real deadlock) and `test/integration/app.integration-spec.ts` (whole `AppModule` + health). `npm run openapi:export` writes `apps/backend/openapi.json`.
 - Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 10 (approved 2026-10-25).
-- **Open, tracked gaps (not fixed):** (1) the `user` and `conversation` rate-limit keys do not exist before authentication, so **Per-conversation burst does not limit yet** (`test/app.e2e-spec.ts` pins this with a test named "KNOWN GAP"; M8/M10 below); (2) `ValidationPipe` on Socket.IO gateways is verified in M8.
+- **Gaps found in M6 and closed in M8:** the `user` and `conversation` rate-limit keys (Per-conversation burst now limits; the "KNOWN GAP" test was replaced) and `ValidationPipe` on Socket.IO gateways. M10c still has to apply the burst class to the real chat routes and events.
 - Prisma client generator sets `importFileExtension = "js"` so the generated imports compile under `nodenext` and Jest.
 - The real `.env` needs a `JWT_SECRET` before `npm start` works (see `.env.example`); integration tests do not need it.
 
@@ -373,22 +375,28 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M7 · **Unblocks:** M9
 
-- [ ] `TokenVerifier` in `common` (HS256 pinned, rejects `alg: none`)
-- [ ] `JwtAuthGuard` per decision 152 (verify → load user+roles in one query → suspended check → `tokens_valid_after` whole-second check → attach active roles only); `@Public()` and optional-auth variant (invalid token = 401)
-- [ ] `RolesGuard` (`TEACHER_NOT_APPROVED` vs `FORBIDDEN`) and `CourseRoleGuard`
-- [ ] `CourseAccessService` returning `OWNER`, `ASSISTANT`, `STUDENT_ACTIVE/PENDING/LEFT`, `REMOVED`, `REJECTED`, `INVITEE`, `NONE` + course status/policy/lock → 404 vs 403
-- [ ] Realtime: Socket.IO server, handshake (token in auth payload, Origin check, shared user-loading logic), personal room, registry, `emitToUser(s)`, `disconnectUser`, `socket.connected/disconnected` events, `session.revoked` listener
-- [ ] **Rate-limit keys that need the user (open gap from M6, Decision 167):** the Per-conversation burst class gets its `user` + `conversation` keys (REST and Socket.IO), replacing the "KNOWN GAP" test in `test/app.e2e-spec.ts`
-- [ ] Mail: `MailService`, three templates (verify, reset, "already registered"), Mailpit in dev; send failures logged, never thrown into the caller
+- [x] `TokenVerifier` in `common` (HS256 pinned, rejects `alg: none`)
+- [x] `JwtAuthGuard` per decision 152 (verify → load user+roles in one query → suspended check → `tokens_valid_after` whole-second check → attach active roles only); `@Public()` and optional-auth variant (invalid token = 401)
+- [x] `RolesGuard` (`TEACHER_NOT_APPROVED` vs `FORBIDDEN`) and `CourseRoleGuard`
+- [x] `CourseAccessService` returning `OWNER`, `ASSISTANT`, `STUDENT_ACTIVE/PENDING/LEFT`, `REMOVED`, `REJECTED`, `INVITEE`, `NONE` + course status/policy/lock → 404 vs 403
+- [x] Realtime: Socket.IO server, handshake (token in auth payload, Origin check, shared user-loading logic), personal room, registry, `emitToUser(s)`, `disconnectUser`, `socket.connected/disconnected` events, `session.revoked` listener
+- [x] **Rate-limit keys that need the user (open gap from M6, Decision 167):** the Per-conversation burst class gets its `user` + `conversation` keys (REST and Socket.IO), replacing the "KNOWN GAP" test in `test/app.e2e-spec.ts`
+- [x] Mail: `MailService`, three templates (verify, reset, "already registered"), Mailpit in dev; send failures logged, never thrown into the caller
 
 **Tests:**
-- [ ] Guard: tampered, expired, wrong-algorithm tokens; unknown/suspended user; `iat` before `tokens_valid_after` (equal second accepted); pending/revoked Teacher on Teacher route; optional-auth invalid token → 401
-- [ ] **Table-driven access test:** relationship × course status × policy × lock against decisions 119, 121, 136 (404 vs 403 outcomes)
-- [ ] Check order: throttle → 401 → `ACCOUNT_SUSPENDED` → guards → input shape
-- [ ] **The JWT guard runs after the rate limiter:** a flood of requests with invalid tokens is answered 429, not 401 (global guard order, `src/common/global-providers.ts`)
-- [ ] **Per-conversation burst actually limits:** the 31st request in 10 seconds by one user in one conversation is answered 429 (do not mark the M6 gap fixed before this passes)
-- [ ] Realtime: handshake rejects invalid/stale token, suspended user, wrong Origin; two sockets per user; `disconnectUser` closes all; `ValidationPipe` behavior on gateway payloads
-- [ ] Mail failure doesn't break the request
+- [x] Guard: tampered, expired, wrong-algorithm tokens; unknown/suspended user; `iat` before `tokens_valid_after` (equal second accepted); pending/revoked Teacher on Teacher route; optional-auth invalid token → 401
+- [x] **Table-driven access test:** relationship × course status × policy × lock against decisions 119, 121, 136 (404 vs 403 outcomes)
+- [x] Check order: throttle → 401 → `ACCOUNT_SUSPENDED` → guards → input shape
+- [x] **The JWT guard runs after the rate limiter:** a flood of requests with invalid tokens is answered 429, not 401 (global guard order, `src/common/global-providers.ts`)
+- [x] **Per-conversation burst actually limits:** the 31st request in 10 seconds by one user in one conversation is answered 429 (do not mark the M6 gap fixed before this passes)
+- [x] Realtime: handshake rejects invalid/stale token, suspended user, wrong Origin; two sockets per user; `disconnectUser` closes all; `ValidationPipe` behavior on gateway payloads
+- [x] Mail failure doesn't break the request
+
+**Status (2026-10-26):** implemented in `apps/backend/src/common/{guards,access,decorators}` (`TokenVerifier`, `Authenticator`, `JwtAuthGuard`, `RolesGuard`, `CourseRoleGuard`, `UserRateLimitGuard`, `RateLimiter`, `CourseAccessService`, `@Public/@OptionalAuth/@Roles/@CourseRole/@CurrentUser`, `AuthCoreModule`), `src/infrastructure/realtime` (Socket.IO gateway, handshake, registry, `RealtimeService`, configured adapter) and `src/infrastructure/mail` (`MailService`, templates, nodemailer transport), with the SMTP settings in the validated configuration. The global guards are registered in the order of the check list (`GLOBAL_PROVIDERS`). The OpenAPI document now derives each operation's security and its 400/401/403/429/500/503 responses from the guard decorators.
+- Tests: `test/common/token-verifier.spec.ts` (41), `course-access.spec.ts` (the 108-case grid), `rate-limiter.spec.ts`; `test/infrastructure/mail.spec.ts`; `test/app.e2e-spec.ts` (57: check order, guard order, Per-conversation burst, mail failure, OpenAPI security); `test/integration/auth-guards`, `course-access`, `realtime` (27, real Socket.IO client) and `mail-smtp` (real SMTP against Mailpit; skips itself when Mailpit is not running). Mutation checks on 14 security-relevant lines (algorithm pinning, expiry, suspension, `tokens_valid_after`, visibility rules, guard order, user-keyed limits, the Origin check, `disconnectUser`, mail errors) were all caught by tests.
+- **The M6 gaps are closed:** Per-conversation burst now limits (the "KNOWN GAP" test was replaced by tests that the 31st request is 429, and that REST and Socket.IO share one budget); `ValidationPipe` is verified on gateway payloads; the JWT guard runs after the rate limiter (test fails if the order changes).
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 12 (**pending owner review**). In particular the user-keyed 429 comes after 401 (it cannot come before), and two readings of Decisions 119/121 in the visibility grid.
+- Found while testing: Nest does not apply the global exception filter to gateways (each gateway must bind it); connecting to SMTP by the name `localhost` stalls the first connection by about 5 s, so the development default is `127.0.0.1`.
 
 ---
 
@@ -459,6 +467,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [ ] Tests: parallel same-`clientId` sends → one message, no `seq` gap; contiguous `seq` under parallel sends; former member can't send/read; archived: send 409, delete allowed; deleted message returns no body but row keeps it; edit-after-delete 409; mark-read never backwards and rejects above `last_seq`; unread excludes own/deleted; `syncCourse` repairs damage and leaves correct state untouched
 
 **Step 3 — Real-time layer**
+- [ ] `ChatGateway` binds `@UseFilters(AllExceptionsFilter)`, re-checks the user on every event with `RealtimeService.requireActiveUser`, and applies the Per-conversation burst class through the shared `RateLimiter` (REST routes with `@RateLimit('PER_CONVERSATION_BURST', { conversationParam: 'id' })`)
 - [ ] `ChatGateway` (`message:send` with ack, `typing:start/stop`, `presence:subscribe`); `PresenceService` (multi-socket, ~5 s debounce, DM/group peers only, block-filtered, `last_seen_at` on last disconnect); `GET /me/presence`
 - [ ] Post-commit recipient computation and emits: `message:new/edited/deleted`, `conversation:added/removed/updated/read`, `presence:update`, `typing`
 - [ ] Tests: removed member stops receiving `message:new` immediately; socket and REST return same errors; same `clientId` twice → one message, one event; forged typing ignored; presence with two sockets and debounce; blocked pairs hidden; `last_seen_at` exposed by no endpoint; `after=` returns exactly missed messages; gateway never imports DB service

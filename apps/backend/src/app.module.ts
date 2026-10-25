@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthCoreModule } from './common/auth-core.module.js';
 import { GLOBAL_PROVIDERS } from './common/global-providers.js';
 import { HealthModule } from './infrastructure/health/index.js';
 import { AuditModule } from './infrastructure/audit/index.js';
@@ -25,6 +26,7 @@ import { UsersModule } from './modules/users/index.js';
     // Infrastructure (never imports a domain)
     AppConfigModule.forRoot(),
     DatabaseModule,
+    AuthCoreModule,
     HealthModule,
     AuditModule,
     MailModule,
