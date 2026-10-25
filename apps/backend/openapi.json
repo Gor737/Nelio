@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/api/v1/health": {
+    "/health": {
       "get": {
         "description": "Public. Never returns configuration or connection details.",
         "operationId": "HealthController_check",
@@ -13,6 +13,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -37,7 +57,7 @@
   },
   "info": {
     "title": "Nelio API",
-    "description": "Backend API of the Nelio learning platform. All paths are under `/api/v1`.\n\nEvery error has the shape `{ statusCode, code, message, errors? }`; branch on `code`, not on `message`.\nCheck order: 429 -> 401 -> 403 ACCOUNT_SUSPENDED -> guards -> 400 -> 409.\n\nError codes: VALIDATION_FAILED, UNAUTHENTICATED, ACCOUNT_SUSPENDED, FORBIDDEN, TEACHER_NOT_APPROVED, NOT_FOUND, TOO_MANY_REQUESTS, INTERNAL_ERROR, RESOURCE_CONFLICT, INVALID_CURRENT_PASSWORD, TOKEN_INVALID, NO_LOGIN_METHOD_REMAINING, COURSE_ARCHIVED, COURSE_ADMIN_LOCKED, COURSE_ALREADY_LOCKED, COURSE_NOT_LOCKED, INVALID_STATE_TRANSITION, ORDER_MISMATCH, INVITATION_REQUIRED, INVITATION_PENDING, ALREADY_ENROLLED, APPLICATION_PENDING, ALREADY_TEACHER, LAST_PLATFORM_ADMIN, CANNOT_SUSPEND_SELF, CANNOT_BLOCK_SELF, CANNOT_BLOCK_ADMIN, LAST_GROUP_ADMIN, MEMBERS_UNAVAILABLE, CANNOT_MESSAGE_USER, CLIENT_ID_REUSED, REPORT_ALREADY_RESOLVED, FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, FILE_IN_USE, SERVICE_UNAVAILABLE.",
+    "description": "Backend API of the Nelio learning platform. All paths are under `/api/v1`, except the unversioned probe `GET /health`.\n\nEvery error has the shape `{ statusCode, code, message, errors? }`; branch on `code`, not on `message`.\nCheck order: 429 -> 401 -> 403 ACCOUNT_SUSPENDED -> guards -> 400 -> 409.\n\nAny endpoint can answer 429 TOO_MANY_REQUESTS (with a `Retry-After` header), 500 INTERNAL_ERROR and 503 SERVICE_UNAVAILABLE. 503 means a dependency (the database) is temporarily unavailable, including a deadlock that survived the server-side retries; the request changed nothing and may be repeated later. No `Retry-After` is sent with 503, so use your own backoff.\n\nError codes: VALIDATION_FAILED, UNAUTHENTICATED, ACCOUNT_SUSPENDED, FORBIDDEN, TEACHER_NOT_APPROVED, NOT_FOUND, TOO_MANY_REQUESTS, INTERNAL_ERROR, RESOURCE_CONFLICT, INVALID_CURRENT_PASSWORD, TOKEN_INVALID, NO_LOGIN_METHOD_REMAINING, COURSE_ARCHIVED, COURSE_ADMIN_LOCKED, COURSE_ALREADY_LOCKED, COURSE_NOT_LOCKED, INVALID_STATE_TRANSITION, ORDER_MISMATCH, INVITATION_REQUIRED, INVITATION_PENDING, ALREADY_ENROLLED, APPLICATION_PENDING, ALREADY_TEACHER, LAST_PLATFORM_ADMIN, CANNOT_SUSPEND_SELF, CANNOT_BLOCK_SELF, CANNOT_BLOCK_ADMIN, LAST_GROUP_ADMIN, MEMBERS_UNAVAILABLE, CANNOT_MESSAGE_USER, CLIENT_ID_REUSED, REPORT_ALREADY_RESOLVED, FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, FILE_IN_USE, SERVICE_UNAVAILABLE.",
     "version": "1.0.0",
     "contact": {}
   },

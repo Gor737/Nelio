@@ -31,23 +31,33 @@ afterAll(async () => {
   process.env = saved;
 });
 
-describe('GET /api/v1/health', () => {
+describe('GET /health (unprefixed, Decision 167)', () => {
   it('answers 200 with the database up', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/health')
-      .expect(200);
+    const res = await request(app.getHttpServer()).get('/health').expect(200);
     expect(res.body).toEqual({ status: 'ok', database: 'up' });
     expect(JSON.stringify(res.body)).not.toMatch(/postgres|password|secret/i);
+  });
+
+  it('is not served under the API prefix', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .expect(404);
+    expect(res.body.code).toBe('NOT_FOUND');
   });
 });
 
 describe('OpenAPI contract', () => {
-  it('documents the health endpoint with its 200 and 503 responses', async () => {
+  it('documents the health endpoint at /health with its success and error responses', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/docs-json')
       .expect(200);
-    const operation = res.body.paths['/api/v1/health'].get;
-    expect(Object.keys(operation.responses).sort()).toEqual(['200', '503']);
+    const operation = res.body.paths['/health'].get;
+    expect(Object.keys(operation.responses).sort()).toEqual([
+      '200',
+      '429',
+      '500',
+      '503',
+    ]);
     expect(
       operation.responses['503'].content['application/json'].schema.$ref,
     ).toMatch(/ErrorResponseDto$/);

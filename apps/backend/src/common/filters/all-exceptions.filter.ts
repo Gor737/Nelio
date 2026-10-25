@@ -22,7 +22,7 @@ import {
   isStatementTimeout,
   isUniqueViolation,
 } from '../../infrastructure/database/error-classifiers.js';
-import { currentRequestId } from '../logging/request-context.js';
+import { currentRequestId } from '../../infrastructure/logging/request-context.js';
 import { ApiException, type FieldError } from './api-exception.js';
 
 interface Rendered {
@@ -30,7 +30,6 @@ interface Rendered {
   readonly code: ErrorCode;
   readonly message: string;
   readonly errors?: readonly FieldError[];
-  readonly retryAfterSeconds?: number;
 }
 
 const byCode = (code: ErrorCode, message?: string): Rendered => ({
@@ -45,8 +44,6 @@ const FRAMEWORK_STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
   401: 'UNAUTHENTICATED',
   403: 'FORBIDDEN',
   404: 'NOT_FOUND',
-  413: 'FILE_TOO_LARGE',
-  415: 'FILE_TYPE_NOT_ALLOWED',
   429: 'TOO_MANY_REQUESTS',
 };
 
@@ -54,8 +51,8 @@ const FRAMEWORK_STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
  * The single place that turns any thrown value into `{ statusCode, code, message, errors? }` (Decisions 137 and 140).
  * Database errors are classified by SQLSTATE (error-classifiers.ts):
  *   unique / foreign key / restrict -> 409 RESOURCE_CONFLICT (no service rule translated it into a specific code)
- *   deadlock / serialization failure that survived the retries -> 409 RESOURCE_CONFLICT
- *   lock timeout / statement timeout -> 503 SERVICE_UNAVAILABLE
+ *   deadlock / serialization failure that survived the retries -> 503 SERVICE_UNAVAILABLE (Decision 166)
+ *   lock timeout / statement timeout -> 503 SERVICE_UNAVAILABLE (no Retry-After: no meaningful value can be determined)
  *   CHECK / NOT NULL violation -> 500 INTERNAL_ERROR, logged loudly (a service let invalid data reach the database)
  * Anything unrecognized is a generic 500 that never reveals the cause to the client.
  */
@@ -70,8 +67,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = http.getResponse<Response>();
 
     const rendered = this.render(exception, request);
-    if (rendered.retryAfterSeconds !== undefined)
-      response.setHeader('Retry-After', String(rendered.retryAfterSeconds));
     if (response.headersSent) return;
     response.status(rendered.status).json({
       statusCode: rendered.status,
@@ -107,10 +102,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         event: 'transaction_retries_exhausted',
         path: request.path,
       });
-      return byCode(
-        'RESOURCE_CONFLICT',
-        'The request conflicted with another change; try again.',
-      );
+      return byCode('SERVICE_UNAVAILABLE');
     }
     if (isLockTimeout(exception) || isStatementTimeout(exception)) {
       this.logger.error({
@@ -118,7 +110,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         path: request.path,
         requestId: currentRequestId(),
       });
-      return { ...byCode('SERVICE_UNAVAILABLE'), retryAfterSeconds: 1 };
+      return byCode('SERVICE_UNAVAILABLE');
     }
     if (isCheckViolation(exception) || isNotNullViolation(exception)) {
       this.logger.error({
@@ -147,6 +139,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : this.httpErrorStatus(exception);
     if (status === undefined) return undefined;
+    // 413/415 are reserved for upload routes (FILE_TOO_LARGE / FILE_TYPE_NOT_ALLOWED, M9a). On a JSON route an oversized
+    // or wrongly typed body is simply a bad request (Decision 167).
+    if (status === 413 || status === 415) {
+      return byCode(
+        'VALIDATION_FAILED',
+        status === 413 ? 'Request body too large' : 'Unsupported content type',
+      );
+    }
     const code = FRAMEWORK_STATUS_TO_CODE[status];
     if (!code) return undefined;
     return byCode(code, status === 400 ? 'Malformed request' : undefined);

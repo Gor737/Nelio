@@ -32,6 +32,10 @@ Real-PostgreSQL tests for constraints, locks and (later) services. No mocks of t
 
 Every hand-written object (CHECK, partial index, trigger, generated column) gets a test that **tries to break it**, with the exact `sqlstate` and `constraint` name: `expect(await sqlError(statement)).toMatchObject({ sqlstate: '23514', constraint: 'blocks_no_self_block' })`. Boundary values are tested on both sides (the 90-day refresh-token cap accepts day 90 and rejects day 90 plus one second).
 
+## Logs must stay clean (Decision 167)
+
+Every HTTP test suite of a new module includes at least one request that carries a password, a bearer token, a cookie and a message body, wrapped in `captureLogs()` from `support/log-capture.ts`, followed by `expectNoneLogged(logs, [...those values])`. The helper fails when a value appears in the output and also when nothing was captured (a vacuous check). See `test/app.e2e-spec.ts`.
+
 ## Migration rules (roadmap M5)
 
 Create with `npm run db:migrate:create -- --name <name>`, read the generated SQL (no unintended `DROP`), append hand-written SQL, put `CREATE EXTENSION` before anything that needs it, keep enum `ADD VALUE` in its own migration, then run `npm run db:migrate:deploy`, `npm run db:drift` and `npm run db:drift:live` (both must print "This is an empty migration"). One-time per server: `npm run db:prepare` creates `<database>_shadow`.

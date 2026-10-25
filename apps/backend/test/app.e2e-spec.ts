@@ -6,6 +6,7 @@ import request from 'supertest';
 import { configureApp } from '../src/app.setup.js';
 import { GLOBAL_PROVIDERS } from '../src/common/global-providers.js';
 import { AppConfigModule } from '../src/infrastructure/config/index.js';
+import { captureLogs, expectNoneLogged } from './support/log-capture.js';
 import { ProbeModule } from './support/probe.module.js';
 
 const env = {
@@ -90,6 +91,26 @@ describe('validation (400 VALIDATION_FAILED)', () => {
     expect(res.body.code).toBe('VALIDATION_FAILED');
   });
 
+  it('answers an oversized JSON body with 400 VALIDATION_FAILED, not 413 FILE_TOO_LARGE (Decision 167)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/probe/items')
+      .send({ name: 'x'.repeat(300_000) })
+      .expect(400);
+    expect(res.body).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_FAILED',
+    });
+  });
+
+  it('answers an unsupported charset with 400 VALIDATION_FAILED, not 415 FILE_TYPE_NOT_ALLOWED (Decision 167)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/probe/items')
+      .set('Content-Type', 'application/json; charset=x-no-such-charset')
+      .send('{"name":"ok"}')
+      .expect(400);
+    expect(res.body.code).toBe('VALIDATION_FAILED');
+  });
+
   it('rejects a malformed UUID path parameter with 400, not 404', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/probe/items/not-a-uuid')
@@ -109,7 +130,7 @@ describe('error mapping', () => {
     ['unique', 409, 'RESOURCE_CONFLICT'],
     ['fk', 409, 'RESOURCE_CONFLICT'],
     ['restrict', 409, 'RESOURCE_CONFLICT'],
-    ['deadlock', 409, 'RESOURCE_CONFLICT'],
+    ['deadlock', 503, 'SERVICE_UNAVAILABLE'],
     ['lock-timeout', 503, 'SERVICE_UNAVAILABLE'],
     ['check', 500, 'INTERNAL_ERROR'],
     ['anything-else', 500, 'INTERNAL_ERROR'],
@@ -209,10 +230,92 @@ describe('rate limiting', () => {
     });
   });
 
+  // KNOWN GAP, not fixed (docs/roadmap.md M8/M10): PER_CONVERSATION_BURST is keyed by user + conversation, and neither exists
+  // before authentication, so today the guard has nothing to count and the class does NOT limit. This test pins the current
+  // behavior so the gap cannot be forgotten: when M8/M10 implement the keys it must fail, and be replaced by a test that
+  // proves the 31st request in 10 seconds is answered 429.
+  it('KNOWN GAP: PER_CONVERSATION_BURST does not limit anything yet', async () => {
+    for (let i = 0; i < 40; i++)
+      await request(app.getHttpServer())
+        .post('/api/v1/probe/burst')
+        .expect(201);
+  });
+
   it('does not let a STRICT flood use up the DEFAULT budget', async () => {
     await request(app.getHttpServer())
       .get(`/api/v1/probe/items/${UUID}`)
       .expect(200);
+  });
+});
+
+describe('503 SERVICE_UNAVAILABLE (Decision 166)', () => {
+  it.each(['deadlock', 'lock-timeout'])(
+    '%s is answered 503 without an invented Retry-After',
+    async (kind) => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/probe/throw/${kind}`)
+        .expect(503);
+      expect(res.body.code).toBe('SERVICE_UNAVAILABLE');
+      expect(res.headers['retry-after']).toBeUndefined();
+    },
+  );
+});
+
+describe('logs never contain request bodies or sensitive header values', () => {
+  let logApp: NestExpressApplication;
+  beforeAll(async () => {
+    logApp = await createApp(); // fresh rate-limit counters: the shared app's STRICT budget is spent by the tests above
+  });
+  afterAll(async () => {
+    await logApp.close();
+  });
+
+  it('keeps passwords, tokens, cookies and message bodies out of every log line', async () => {
+    const logs = captureLogs();
+    try {
+      const secrets = [
+        'Sup3r-Secret-Password!',
+        'header-bearer-token-value-123',
+        'cookie-session-value-456',
+        'the private message body text',
+      ];
+      await request(logApp.getHttpServer())
+        .post('/api/v1/probe/items')
+        .set('Authorization', `Bearer ${secrets[1]}`)
+        .set('Cookie', `refresh=${secrets[2]}`)
+        .set('X-Api-Key', 'api-key-value-789')
+        .send({ name: 'ok', password: secrets[0], body: secrets[3] }) // rejected: unknown fields, so it also exercises the error path
+        .expect(400);
+      await request(logApp.getHttpServer())
+        .post('/api/v1/probe/login')
+        .set('Authorization', `Bearer ${secrets[1]}`)
+        .send({ email: `${secrets[3]}@example.test` })
+        .expect(201);
+      expectNoneLogged(logs, [...secrets, 'api-key-value-789']);
+    } finally {
+      logs.restore();
+    }
+  });
+});
+
+describe('OpenAPI error contract', () => {
+  it('lists 429, 500 and 503 as ErrorResponseDto on every operation, and SERVICE_UNAVAILABLE among the codes', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/docs-json')
+      .expect(200);
+    for (const path of Object.values<Record<string, any>>(res.body.paths)) {
+      for (const operation of Object.values<any>(path)) {
+        for (const status of ['429', '500', '503']) {
+          expect(
+            operation.responses[status].content['application/json'].schema.$ref,
+          ).toMatch(/ErrorResponseDto$/);
+        }
+      }
+    }
+    expect(
+      res.body.components.schemas.ErrorResponseDto.properties.code.enum,
+    ).toContain('SERVICE_UNAVAILABLE');
+    expect(res.body.info.description).toMatch(/503/);
   });
 });
 

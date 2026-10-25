@@ -10,7 +10,9 @@ import {
 
 async function bootstrap() {
   try {
-    const app = await NestFactory.create<NestExpressApplication>(AppModule);
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+      abortOnError: false, // let a ConfigError reach the handler below instead of Nest printing a stack trace and aborting
+    });
     configureApp(app);
     app.enableShutdownHooks();
     await app.listen(app.get<AppConfig>(APP_CONFIG).port);

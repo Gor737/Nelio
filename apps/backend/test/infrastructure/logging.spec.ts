@@ -10,7 +10,7 @@ import {
   requestIdMiddleware,
   runWithRequestId,
   type LogSink,
-} from '../../src/common/logging/index.js';
+} from '../../src/infrastructure/logging/index.js';
 
 class MemorySink implements LogSink {
   readonly lines: string[] = [];

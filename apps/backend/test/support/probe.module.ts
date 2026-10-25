@@ -54,6 +54,13 @@ export class ProbeController {
     return { ok: true, email: dto.email };
   }
 
+  /** A route in the PER_CONVERSATION_BURST class, to pin the known gap that the class cannot limit before M8/M10. */
+  @Post('burst')
+  @RateLimit('PER_CONVERSATION_BURST')
+  burst() {
+    return { ok: true };
+  }
+
   @Get('throw/:kind')
   fail(@Param('kind') kind: string): never {
     switch (kind) {

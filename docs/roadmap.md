@@ -1,6 +1,6 @@
 # Nelio Implementation Roadmap
 
-> **Decision range:** 1–165 (all Decided) · **Next decision number:** 166 · **Unresolved deployment decision:** production hosting provider (not selected; see M14)
+> **Decision range:** 1–167 (all Decided) · **Next decision number:** 168 · **Unresolved deployment decision:** production hosting provider (not selected; see M14)
 > **Status:** Design complete (Phases 1–10 closed). Implementation starts at M0.
 
 ---
@@ -85,12 +85,13 @@
   - [ ] Cross-module writes go through the owner's service (single Progress exception)
   - [ ] Every request DTO field has a validator decorator
   - [ ] Progress reads are one SQL statement
+  - [ ] The module's HTTP tests assert with `test/support/log-capture.ts` that request bodies, passwords, tokens, cookies and message bodies do not appear in logs (Decision 167)
 
 ---
 
 ## 4. Change Protocol
 
-Decisions 1–165 are fixed. If a spike or implementation step shows a decision is wrong or impossible:
+Decisions 1–167 are fixed. If a spike or implementation step shows a decision is wrong or impossible:
 
 1. [ ] **Stop** work on the affected item.
 2. [ ] **Write the conflict down** (what the decision says, what was found, evidence).
@@ -312,10 +313,12 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Verify:** `ValidationPipe` on Socket.IO gateways (tested in M8, still open); throttler behind a proxy (done: `TRUST_PROXY=1` limits each `X-Forwarded-For` client separately, `TRUST_PROXY=0` ignores the header).
 
-**Status (2026-10-25):** implemented in `apps/backend/src/{app.setup.ts,app.module.ts,main.ts,openapi-export.ts}`, `src/common/{filters,pipes,guards,decorators,logging,global-providers.ts}` and `src/infrastructure/{config,database,audit,events,health}`. Tests: `test/infrastructure/config.spec.ts` (14), `test/common/logging.spec.ts` (13), `test/app.e2e-spec.ts` (28, no database), `test/integration/database.integration-spec.ts` (19, real deadlock) and `app.integration-spec.ts` (3, whole `AppModule` + health). `npm run openapi:export` writes `apps/backend/openapi.json`.
-- Recorded choices where the documents are silent (all listed as PROPOSED in `docs/proposed-defaults.md` section 10, awaiting owner review): transaction timeouts and retry numbers; new error code `SERVICE_UNAVAILABLE` (503); DB-error → HTTP mapping (exhausted deadlock → 409, lock/statement timeout → 503); own in-memory rate limiter instead of `@nestjs/throttler`; `user`/`conversation` rate-limit keys wait for authentication (M8/M10); own JSON logger instead of pino; logging lives in `common/logging`, an addition to the folders listed in the architecture.
-- Prisma client generator now sets `importFileExtension = "js"` so the generated imports compile under `nodenext` and Jest.
-- The real `.env` has no `JWT_SECRET`: `npm run start:dev` refuses to start until one is added (see `.env.example`). Integration tests do not need it.
+**Status (2026-10-25):** implemented in `apps/backend/src/{app.setup.ts,app.module.ts,main.ts,openapi-export.ts}`, `src/common/{filters,pipes,guards,decorators,global-providers.ts}` and `src/infrastructure/{config,database,audit,events,health,logging}`. After the owner's review the same day (Decisions 166 and 167) it was revised: exhausted deadlock retries and database timeouts → 503 `SERVICE_UNAVAILABLE` (no `Retry-After`); JSON-body 413/415 → 400 `VALIDATION_FAILED`; the rate-limit store is bounded (`COUNT_LIMITS.RATE_LIMIT_MAX_KEYS`) and unit-tested with a fake clock; logging moved to `infrastructure/logging`; `GET /health` is unprefixed; `start`, `start:dev` and `start:debug` load the root `.env` with `--env-file-if-exists=../../.env`.
+- Tests: `test/infrastructure/config.spec.ts`, `test/infrastructure/logging.spec.ts`, `test/common/rate-limit.store.spec.ts`, `test/app.e2e-spec.ts` (no database), `test/integration/database.integration-spec.ts` (real deadlock) and `test/integration/app.integration-spec.ts` (whole `AppModule` + health). `npm run openapi:export` writes `apps/backend/openapi.json`.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 10 (approved 2026-10-25).
+- **Open, tracked gaps (not fixed):** (1) the `user` and `conversation` rate-limit keys do not exist before authentication, so **Per-conversation burst does not limit yet** (`test/app.e2e-spec.ts` pins this with a test named "KNOWN GAP"; M8/M10 below); (2) `ValidationPipe` on Socket.IO gateways is verified in M8.
+- Prisma client generator sets `importFileExtension = "js"` so the generated imports compile under `nodenext` and Jest.
+- The real `.env` needs a `JWT_SECRET` before `npm start` works (see `.env.example`); integration tests do not need it.
 
 ---
 
@@ -369,12 +372,15 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [ ] `RolesGuard` (`TEACHER_NOT_APPROVED` vs `FORBIDDEN`) and `CourseRoleGuard`
 - [ ] `CourseAccessService` returning `OWNER`, `ASSISTANT`, `STUDENT_ACTIVE/PENDING/LEFT`, `REMOVED`, `REJECTED`, `INVITEE`, `NONE` + course status/policy/lock → 404 vs 403
 - [ ] Realtime: Socket.IO server, handshake (token in auth payload, Origin check, shared user-loading logic), personal room, registry, `emitToUser(s)`, `disconnectUser`, `socket.connected/disconnected` events, `session.revoked` listener
+- [ ] **Rate-limit keys that need the user (open gap from M6, Decision 167):** the Per-conversation burst class gets its `user` + `conversation` keys (REST and Socket.IO), replacing the "KNOWN GAP" test in `test/app.e2e-spec.ts`
 - [ ] Mail: `MailService`, three templates (verify, reset, "already registered"), Mailpit in dev; send failures logged, never thrown into the caller
 
 **Tests:**
 - [ ] Guard: tampered, expired, wrong-algorithm tokens; unknown/suspended user; `iat` before `tokens_valid_after` (equal second accepted); pending/revoked Teacher on Teacher route; optional-auth invalid token → 401
 - [ ] **Table-driven access test:** relationship × course status × policy × lock against decisions 119, 121, 136 (404 vs 403 outcomes)
 - [ ] Check order: throttle → 401 → `ACCOUNT_SUSPENDED` → guards → input shape
+- [ ] **The JWT guard runs after the rate limiter:** a flood of requests with invalid tokens is answered 429, not 401 (global guard order, `src/common/global-providers.ts`)
+- [ ] **Per-conversation burst actually limits:** the 31st request in 10 seconds by one user in one conversation is answered 429 (do not mark the M6 gap fixed before this passes)
 - [ ] Realtime: handshake rejects invalid/stale token, suspended user, wrong Origin; two sockets per user; `disconnectUser` closes all; `ValidationPipe` behavior on gateway payloads
 - [ ] Mail failure doesn't break the request
 
@@ -388,6 +394,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [ ] Add MinIO to Docker Compose and its `MINIO_ROOT_*` variables to `.env.example`
 - [ ] `StorageDriver` interface + S3/MinIO implementation (Files module only)
 - [ ] `POST /files` (multipart, limits per `kind`, real file-type check, generated storage keys); `DELETE /files/:id` (own, unattached)
+- [ ] `FILE_TOO_LARGE` (413) and `FILE_TYPE_NOT_ALLOWED` (415) are produced on upload routes only (the global filter maps a JSON-body 413/415 to 400, Decision 167); test both on `POST /files`
 - [ ] Signed URLs for attachments; public URLs for avatars/covers
 - [ ] Orphan cleanup job (older than 24 h, unreferenced across all referencing tables)
 - [ ] Order: delete DB row then storage object; upload storage then metadata
@@ -439,6 +446,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Step 2 — Messages and `CourseChannelService`**
 - [ ] Send, history (`before`/`after` `seq` cursors), edit, soft delete (author or course Owner/Assistant), mark read (`GREATEST`), unread counts, read-only for archived courses, `CLIENT_ID_REUSED`, moderator-deletion audit
+- [ ] Message send and typing are limited per user and conversation on both transports (Per-conversation burst, see M8)
 - [ ] `CourseChannelService`: `createForCourse`, idempotent `addMember`/`endMembership` (no-op without channel), `syncCourse`
 - [ ] Tests: parallel same-`clientId` sends → one message, no `seq` gap; contiguous `seq` under parallel sends; former member can't send/read; archived: send 409, delete allowed; deleted message returns no body but row keeps it; edit-after-delete 409; mark-read never backwards and rejects above `last_seq`; unread excludes own/deleted; `syncCourse` repairs damage and leaves correct state untouched
 
@@ -547,7 +555,8 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M13
 
 - [ ] **Select the production hosting provider and verify its compatibility (deployment requirement, Decision 165).** The provider is **not selected** and nothing has been verified. From the provider's official documentation confirm: PostgreSQL 18 or later is offered (`uuidv7()` is core in 18, no extension needed); `pg_trgm` is allowed; advisory locks and `set_config(..., true)` behave correctly behind its connection pooler; backups and a tested restore are possible; S3-compatible private/public bucket policies are possible. Do not deploy to production before this is done.
-- [ ] Same-site deployment (shared registrable domain or reverse proxy); trusted-proxy config; `Secure` cookies; validated production environment
+- [ ] **Revisit the database pool size** (`TRANSACTION_LIMITS.POOL_MAX`, default 10) against the selected provider's connection limits and pooler (approved 2026-10-25)
+- [ ] Same-site deployment (shared registrable domain or reverse proxy); trusted-proxy config (`TRUST_PROXY` hop count; the rate limiter sees the proxy's IP if it is wrong); `Secure` cookies; validated production environment
 - [ ] S3 bucket policy: private attachments, public avatars/covers
 - [ ] Database backups **and a tested restore** (deleted-message text persists in backups, decision 86)
 - [ ] Runbook: sweeper logs signal a bug; JWT secret rotation logs everyone out; how to create an Admin
@@ -580,8 +589,8 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 ## 8. Decision Status
 
-- **Decided:** 1–165 (165: PostgreSQL 18+ and database-generated `uuidv7()`, approved 2026-10-25)
+- **Decided:** 1–167 (165: PostgreSQL 18+ and database-generated `uuidv7()`; 166: `SERVICE_UNAVAILABLE` 503 in the status policy; 167: M6 infrastructure choices; all approved 2026-10-25)
 - **Open design questions:** none
 - **Unresolved deployment decision:** the production hosting provider is not selected. It blocks nothing before M14; its PostgreSQL 18 compatibility check is a deployment requirement (M14).
 - **Initial implementation defaults:** the values in `docs/proposed-defaults.md` were approved by the owner on 2026-10-25 as initial defaults; they are not requirements of the original documents.
-- **Next decision number:** **166**
+- **Next decision number:** **168**

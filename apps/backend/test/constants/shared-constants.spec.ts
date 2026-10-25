@@ -102,11 +102,11 @@ describe('error codes', () => {
     const derived = codes.filter(
       (c) => ERROR_CODES[c].source === 'approved-derived',
     );
-    const proposed = codes.filter((c) => ERROR_CODES[c].source === 'proposed');
-    expect(documented.length + derived.length + proposed.length).toBe(
-      codes.length,
-    );
-    expect(proposed).toEqual(['SERVICE_UNAVAILABLE']); // added in M6, listed in docs/proposed-defaults.md "Added in M6"
+    expect(documented.length + derived.length).toBe(codes.length);
+    expect(ERROR_CODES.SERVICE_UNAVAILABLE).toMatchObject({
+      status: 503,
+      source: 'documented', // Decision 166
+    });
     expect(documented.length).toBeGreaterThan(10);
     expect(derived.length).toBeGreaterThan(0);
   });

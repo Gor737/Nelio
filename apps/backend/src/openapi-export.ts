@@ -12,11 +12,12 @@ process.env.JWT_SECRET ??= 'openapi-export-only-secret-never-used-for-signing';
 
 async function main() {
   const { AppModule } = await import('./app.module.js');
-  const { API_PREFIX, buildOpenApiDocument } = await import('./app.setup.js');
+  const { API_PREFIX, UNPREFIXED_ROUTES, buildOpenApiDocument } =
+    await import('./app.setup.js');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: false,
   });
-  app.setGlobalPrefix(API_PREFIX);
+  app.setGlobalPrefix(API_PREFIX, { exclude: UNPREFIXED_ROUTES });
   const output = process.argv[2] ?? 'openapi.json';
   await writeFile(
     output,

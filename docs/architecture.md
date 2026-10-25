@@ -1,7 +1,7 @@
 # Nelio Architecture
 
 > **Scope:** the final approved v1 architecture of Nelio, a web-based Learning Management System.
-> **Source of truth:** Decisions 1–165 (all Decided). Historical reasoning and decision history live in `decision.log.md`.
+> **Source of truth:** Decisions 1–167 (all Decided). Historical reasoning and decision history live in `decision.log.md`.
 > **Companion files:** `roadmap.md` (implementation order).
 > **Verification note:** a few Prisma/PostgreSQL behaviors were stated from memory and are verified during Spikes A and B (M1, M2). Any contradiction is handled through the Change Protocol in `roadmap.md`, never silently.
 
@@ -88,7 +88,7 @@ src/
 main.ts
 app.module.ts
 infrastructure/
-database/ config/ audit/ mail/ events/ realtime/
+database/ config/ audit/ mail/ events/ realtime/ logging/ health/
 common/
 guards/ decorators/ access/ filters/ pipes/ constants/
 modules/
@@ -536,7 +536,7 @@ Check order (first failure wins): `429 → 401 → 403 ACCOUNT_SUSPENDED → gua
 | Invitations | `POST/GET …/invitations`; `POST …/invitations/:id/revoke`; `GET /me/invitations`; `POST /me/invitations/:id/accept` and `decline` |
 | Chat | `POST /conversations/direct`, `/groups`; `GET/PATCH /conversations/:id`; members (list, add, remove, role); `leave`; `PATCH …/membership`; messages (history, send, edit, delete); `PUT …/read`; `POST …/messages/:id/report` |
 | Admin | users (list, get, suspend, unsuspend, revoke-teacher, admin-role); teacher-applications; courses (list, get, outline, lesson review, `lock`, `unlock`, `restore`, ownership-transfer, student remove/reinstate); categories and tags (CRUD, merge); reports (list, get, `context`, dismiss, action); `audit-logs`; `stats` |
-| Infra | `GET /health`, Swagger |
+| Infra | `GET /health` (unprefixed, unversioned; Decision 167), Swagger UI at `/api/docs` and the document at `/api/docs-json` |
 
 ### REST versus WebSocket responsibilities
 
@@ -552,7 +552,7 @@ Check order (first failure wins): `429 → 401 → 403 ACCOUNT_SUSPENDED → gua
 
 ### Rate-limit classes
 
-**Strict** (login, registration, forgot-password, resend-verification), **Tight** (user search, DM/group creation, uploads, reports, teacher application, invitations), **Per-conversation burst** (message send, typing), **Default**. A global throttler runs before authentication.
+**Strict** (login, registration, forgot-password, resend-verification), **Tight** (user search, DM/group creation, uploads, reports, teacher application, invitations), **Per-conversation burst** (message send, typing), **Default**. A global throttler runs before authentication, so only the `ip` and `email` keys exist at that point. The in-memory store is bounded (at most `COUNT_LIMITS.RATE_LIMIT_MAX_KEYS` windows; when full it sweeps expired windows, then evicts the earliest-started one). **Known gap until M8/M10:** the `user` and `conversation` keys of the Per-conversation burst class need the authenticated user and the conversation, so that class does not limit yet; M8/M10 implement it and must add a test that proves a request over the limit is answered 429.
 
 ---
 
@@ -833,14 +833,18 @@ All integration tests run against **real PostgreSQL**; mocked Prisma does not co
 
 ### Cross-cutting configuration
 
-Global `ValidationPipe` (whitelist, forbid unknown, transform); global exception filter (maps unique/FK violations to 409, CHECK violations to a logged 500 because they indicate a service bug); global JWT guard with `@Public()`; global throttler; Helmet; CORS (frontend origin, credentials); structured logging with request ids; Swagger; `/health`; `/api/v1` prefix.
+Global `ValidationPipe` (whitelist, forbid unknown, transform); global exception filter (maps unique/FK violations to 409, CHECK violations to a logged 500 because they indicate a service bug); global JWT guard with `@Public()`; global throttler (own in-memory implementation, bounded, Decision 167); Helmet; CORS (frontend origin, credentials); structured logging with request ids (own JSON logger in `infrastructure/logging`, Decision 167); Swagger; `GET /health` outside the prefix; `/api/v1` prefix for everything else.
+
+**Database errors in the exception filter (Decisions 166 and 167):** unique, foreign-key and restrict violations that no service translated → 409 `RESOURCE_CONFLICT`; a deadlock or serialization failure that survived the bounded retries, a lock timeout and a statement timeout → 503 `SERVICE_UNAVAILABLE` (an infrastructure failure, not a business conflict; no `Retry-After`, because no meaningful value can be determined); CHECK and NOT NULL violations → logged 500 `INTERNAL_ERROR`. A JSON body that is too large or has an unsupported content type → 400 `VALIDATION_FAILED`; 413 `FILE_TOO_LARGE` and 415 `FILE_TYPE_NOT_ALLOWED` exist only on upload routes (M9a).
+
+**Folder rules for cross-cutting code:** logging, health, config, database, audit, events, mail and realtime are infrastructure (`infrastructure/`), and `common/` holds the Nest building blocks that every module uses (guards, decorators, access, filters, pipes, constants). Both may import each other's public files but never a domain module. `common/filters` imports the SQLSTATE classifiers from `infrastructure/database` on purpose: they are pure functions with no Nest or Prisma dependency, the transaction runner needs the same functions, and one copy keeps the SQLSTATE rules in one place. If `infrastructure` ever needed something from `common/filters`, the classifiers would move to `common/` instead.
 
 ### Single sources of truth in code
 
 | File | Contents |
 |---|---|
 | Limits | Titles, bodies, tag cap, group cap (50), file sizes; read by DTOs and compared with SQL by a test |
-| Error codes | Every code with its status (including the two-status `COURSE_ADMIN_LOCKED`) |
+| Error codes | Every code with its status (including the two-status `COURSE_ADMIN_LOCKED`, and `SERVICE_UNAVAILABLE` 503, Decision 166) |
 | Permission matrix | Platform-level and course-level matrices as data |
 | Notification types | The 12 types with recipients and triggers |
 | Audit actions | Constant list; separate from notification names |

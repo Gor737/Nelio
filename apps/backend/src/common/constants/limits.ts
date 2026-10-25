@@ -75,6 +75,8 @@ export const COUNT_LIMITS = {
   REPORT_CONTEXT_MESSAGES_EACH_SIDE: 10,
   /** Architecture section 17: "chunked bulk insert (~500)". */
   NOTIFICATION_FANOUT_CHUNK: 500,
+  /** Approved in Decision 167: upper bound on the in-memory rate-limit windows (about 10 MB at this size). */
+  RATE_LIMIT_MAX_KEYS: 50_000,
 } as const;
 
 /** Time-related limits, in milliseconds unless the name says otherwise. */
@@ -141,8 +143,8 @@ export const FILE_LIMITS: Record<
 };
 
 /**
- * Transaction runner defaults (Spike B report, section 3). PROPOSED in M6 and pending owner review: they are listed in the
- * "Added in M6" section of docs/proposed-defaults.md. Prisma's own `timeout` only fails the COMMIT and never cancels a
+ * Transaction runner defaults (Spike B report, section 3). Approved by the owner on 2026-10-25: listed in the
+ * "Added in M6" section of docs/proposed-defaults.md (revisit POOL_MAX at M14). Prisma's own `timeout` only fails the COMMIT and never cancels a
  * statement, so the PostgreSQL timeouts are what really bound a transaction; the Prisma timeout is kept larger than both.
  */
 export const TRANSACTION_LIMITS = {

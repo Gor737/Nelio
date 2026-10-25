@@ -1,6 +1,6 @@
 # Nelio — Decision Log
 
-> **Scope:** the authoritative chronological record of Decisions 1–165.
+> **Scope:** the authoritative chronological record of Decisions 1–167.
 > **Purpose:** records WHAT was decided and WHY. `architecture.md` describes the final HOW; `roadmap.md` describes implementation order.
 > **Status convention:** "Accepted" means the decision was approved by the project owner. Where a decision was later amended, tightened, extended, finalized or had its implementation changed by a later decision, this is stated in its Status line and in the later decision. Original wording is preserved, and the amendment is recorded rather than silently resolved.
 
@@ -2494,18 +2494,69 @@ This decision does **not** select a hosting provider or deployment platform. The
 
 ---
 
+## Decision 166 — `SERVICE_UNAVAILABLE` (503) joins the status-code policy
+
+**Status:** Accepted (proposed 2026-10-25 from the M6 implementation; approved by the project owner 2026-10-25, with the clarification that an exhausted deadlock retry is a 503).
+
+### Decision
+Add the error code `SERVICE_UNAVAILABLE` with HTTP status **503** to the error-code registry, and extend the status test of Decision 140 with one line: **503 — a dependency the request needs is temporarily unavailable; nothing was changed and the request may be repeated later.** It is used for:
+- the health endpoint when the database does not answer;
+- a PostgreSQL `lock_timeout` or `statement_timeout`;
+- a deadlock (40P01) or serialization failure (40001) that survived the bounded retries of `runInTransaction` (Decision 159). This is an infrastructure failure, not a business conflict, so it is **not** a 409.
+
+`Retry-After` is **not** sent with 503, because no meaningful value can be determined (it is sent with 429, where the remaining window is known). Every operation in the OpenAPI document lists 429, 500 and 503 with the standard error body, and the API description explains 503 for the frontend.
+
+### Reason / Context
+- The documented status set (Decision 140) had no code for "the server is healthy but cannot serve this request right now". Reporting a lock timeout as 500 would label an operational condition as a service bug, and as 409 would label it as a data conflict the caller can resolve.
+- The M6 exception filter needed a defined mapping for database errors; the unique, foreign-key and CHECK mappings were already stated in the architecture and are unchanged.
+
+### Relationship to existing decisions
+- Extends **Decision 140** (adds a status to its test) and **Decision 137** (a new entry in the error-code single source of truth). Nothing else changes: `500 INTERNAL_ERROR` for CHECK violations and unknown errors, `409 RESOURCE_CONFLICT` for unique/foreign-key violations.
+- The transaction retry bounds (3 attempts, 20 ms jittered backoff) come from Decision 159 and Spike B and are listed in `proposed-defaults.md` section 10.
+
+### Consequences / Constraints
+- The frontend must treat 503 as "try again later" and must not show it as a validation or permission error.
+- A repeated 503 from the same endpoint under normal load is a signal to investigate lock order (Decision 160), not to raise the timeouts.
+
+---
+
+## Decision 167 — M6 infrastructure choices: own bounded rate limiter, JSON logger in `infrastructure/logging`, unprefixed `/health`, JSON 413/415 as 400
+
+**Status:** Accepted (proposed 2026-10-25 from the M6 implementation and review; approved by the project owner 2026-10-25, with the conditions below).
+
+### Decision
+1. **Rate limiter.** The "global throttler" of Decisions 107 and 153 is implemented as an own in-memory guard (`common/guards`), registered first among the global guards, instead of `@nestjs/throttler`. Its store is **bounded**: at most `COUNT_LIMITS.RATE_LIMIT_MAX_KEYS` (50 000) windows; when full it sweeps expired windows and then evicts the earliest-started window, counting evictions. Keys available before authentication are `ip` and `email`. **The `user` and `conversation` keys of the Per-conversation burst class are not available before authentication, so that class does not limit yet; this is a tracked gap, not a fix.** M8/M10 must implement it and add a test proving that a request over the limit is answered 429, and M8 must add a test that the JWT guard runs after the rate limiter.
+2. **Logging.** Structured logging with request ids (Decision 112) is an own JSON logger, `infrastructure/logging`, not a library. Redaction (tokens, passwords, cookies, message bodies) is by key words, access logs record only method, path without query, status and duration, and a log-capture test helper asserts it. Every HTTP test suite of a new module must assert that its request bodies and sensitive header values do not appear in logs.
+3. **Folders.** `infrastructure/` gains `logging/` and `health/`. `common/filters` may import the SQLSTATE classifiers from `infrastructure/database` (pure functions, shared with the transaction runner); the reasoning is recorded in `architecture.md`.
+4. **Health.** `GET /health` is served **outside** the `/api/v1` prefix, as written in the architecture (Infra row), and is excluded from the prefix explicitly.
+5. **413 and 415.** A JSON body that is too large or has an unsupported content type is answered 400 `VALIDATION_FAILED`. `FILE_TOO_LARGE` (413) and `FILE_TYPE_NOT_ALLOWED` (415) exist only on upload routes, implemented in M9a (consistent with Decision 140: "413/415 uploads").
+
+### Reason / Context
+- The documents say "throttler" and "structured logging" and name no library; both are small, fully tested pieces on a single-instance deployment (Decision 153: in-memory storage fits the single-instance assumption). `@nestjs/throttler` 6.7.1 and `nestjs-pino` 5.3.1 both support NestJS 12, so the choice was not forced; replacing either later is a contained change (one guard; the Nest `Logger` interface).
+- The review of the M6 additions found the rate-limit store unbounded, the log module outside the folder structure, `/health` under the prefix contrary to the Infra row, and 413/415 used for JSON bodies.
+
+### Relationship to existing decisions
+- Implements **Decisions 107, 112, 153**; adjusts the folder structure of `architecture.md`; consistent with **Decision 140** (413/415 are upload codes) and with **Decision 166** (503 for infrastructure failures).
+
+### Consequences / Constraints
+- Until the gap in item 1 is closed, nothing may rely on the Per-conversation burst class for protection.
+- A sustained flood of unique keys can make the limiter more permissive for the oldest keys (evicted windows restart); evictions are counted so this can be monitored. Refusing new keys instead would let an attacker lock every other user out, so it was rejected.
+- The trusted-proxy hop count (`TRUST_PROXY`) remains a deployment requirement until the hosting provider is selected.
+
+---
+
 ## Future Decisions
 
 The next available decision number is:
 
-**Decision 166**
+**Decision 168**
 
 ---
 
 # Decision Governance
 
-- **Current decisions:** 1–165
-- **Next available decision:** 166
+- **Current decisions:** 1–167
+- **Next available decision:** 168
 - **Unresolved deployment decision (not a numbered decision yet):** the production hosting provider is not selected; see Decision 165, Consequences.
 - **No silent architectural changes.** The architecture may not be altered without a numbered decision.
 - **Any implementation conflict must result in a new numbered decision.** If a spike or implementation step shows an existing decision is wrong or impossible, work stops, the conflict is written down, and a new proposal (166 and up) is raised and approved before anything changes.

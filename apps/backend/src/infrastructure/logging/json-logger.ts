@@ -1,5 +1,5 @@
 import type { LoggerService } from '@nestjs/common';
-import type { LogLevel } from '../../infrastructure/config/index.js';
+import type { LogLevel } from '../config/index.js';
 import { redact, redactString } from './redact.js';
 import { currentRequestId } from './request-context.js';
 

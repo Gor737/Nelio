@@ -4,7 +4,8 @@
  *
  * Status test (Decision 140): 400 request wrong regardless of data; 401 not authenticated; 403 caller not entitled;
  * 404 hidden, or the id is not part of the URL's course; 409 caller entitled but current data conflicts; 413/415
- * uploads; 429 throttled; 500 server bug. Check order: 429 -> 401 -> 403 ACCOUNT_SUSPENDED -> guards -> 400 -> 409.
+ * uploads (never on JSON routes: an oversized or wrongly typed JSON body is a 400); 429 throttled; 500 server bug;
+ * 503 a dependency is temporarily unavailable (Decision 166). Check order: 429 -> 401 -> 403 ACCOUNT_SUSPENDED -> guards -> 400 -> 409.
  *
  * `source: 'documented'` = the code AND its status are stated in the documents. `source: 'approved-derived'` = the code name is
  * documented (or needed by a documented behavior) but its status was applied from the status test above; the derived
@@ -17,8 +18,7 @@ export type HttpStatus =
 export interface ErrorCodeSpec {
   /** One status, or `[403, 409]` for the single documented two-status code. */
   readonly status: HttpStatus | readonly [HttpStatus, HttpStatus];
-  /** `proposed` = added by the implementer after the owner's approval round; pending review (docs/proposed-defaults.md, "Added in M6"). */
-  readonly source: 'documented' | 'approved-derived' | 'proposed';
+  readonly source: 'documented' | 'approved-derived';
   readonly description: string;
 }
 
@@ -30,11 +30,6 @@ const approvedDerived = (
   status: ErrorCodeSpec['status'],
   description: string,
 ): ErrorCodeSpec => ({ status, source: 'approved-derived', description });
-
-const proposed = (
-  status: ErrorCodeSpec['status'],
-  description: string,
-): ErrorCodeSpec => ({ status, source: 'proposed', description });
 
 export const ERROR_CODES = {
   // --- transport, validation, authentication ---
@@ -178,10 +173,10 @@ export const ERROR_CODES = {
     'Deleting a file that is still referenced.',
   ),
 
-  // --- operations (added in M6; not yet reviewed by the owner) ---
-  SERVICE_UNAVAILABLE: proposed(
+  // --- operations (Decision 166) ---
+  SERVICE_UNAVAILABLE: documented(
     503,
-    'A dependency the request needs (the database) is not reachable; used by the health endpoint.',
+    'A dependency the request needs (the database) is temporarily unavailable: health check failure, lock or statement timeout, or a deadlock that survived the retries. Safe to retry later.',
   ),
 } as const satisfies Record<string, ErrorCodeSpec>;
 
