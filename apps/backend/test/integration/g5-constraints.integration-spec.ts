@@ -509,7 +509,7 @@ describe('G5 schema (real PostgreSQL, built from migrations)', () => {
           targetType: 'MESSAGE',
           messageId: message,
           targetUserId: creator.id,
-          snapshot: {},
+          snapshot: 'evidence',
         }),
       ); // two targets
       await shapeError(
@@ -520,7 +520,10 @@ describe('G5 schema (real PostgreSQL, built from migrations)', () => {
         }),
       ); // two targets
       await shapeError(
-        createReport(pool, member.id, { targetType: 'MESSAGE', snapshot: {} }),
+        createReport(pool, member.id, {
+          targetType: 'MESSAGE',
+          snapshot: 'evidence',
+        }),
       ); // none
       await shapeError(createReport(pool, member.id, { targetType: 'USER' })); // none
       await shapeError(
@@ -533,7 +536,7 @@ describe('G5 schema (real PostgreSQL, built from migrations)', () => {
         createReport(pool, member.id, {
           targetType: 'MESSAGE',
           targetUserId: creator.id,
-          snapshot: {},
+          snapshot: 'evidence',
         }),
       ); // user target on a MESSAGE report
       await shapeError(
@@ -546,7 +549,7 @@ describe('G5 schema (real PostgreSQL, built from migrations)', () => {
         createReport(pool, member.id, {
           targetType: 'USER',
           targetUserId: creator.id,
-          snapshot: {},
+          snapshot: 'evidence',
         }),
       ); // USER with snapshot
     });
@@ -606,6 +609,87 @@ describe('G5 schema (real PostgreSQL, built from migrations)', () => {
           }),
         ),
       ).toMatchObject({ constraint: 'reports_resolution_note_length' });
+    });
+  });
+
+  // Decision 77: the report stores a TEXT snapshot of the message body at report time.
+  describe('Report snapshot (text, 1-2000 characters)', () => {
+    it('the column is text, not jsonb', async () => {
+      const { rows } = await pool.query<{ data_type: string }>(
+        `SELECT data_type FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'reports' AND column_name = 'message_snapshot'`,
+      );
+      expect(rows).toEqual([{ data_type: 'text' }]);
+    });
+
+    it('accepts a snapshot of 1 and of MESSAGE_BODY.max characters, and rejects empty and max+1', async () => {
+      const { member, message } = await chat();
+      const admin = await createAdmin(pool);
+      const resolved = {
+        status: 'DISMISSED' as const,
+        reviewedBy: admin.id,
+        reviewedAt: new Date(),
+      };
+      const snap = (snapshot: string) =>
+        reportMessage(pool, member.id, message, { snapshot, ...resolved });
+      await snap(edge(TEXT_LIMITS.MESSAGE_BODY.min));
+      await snap(edge(TEXT_LIMITS.MESSAGE_BODY.max));
+      expect(await sqlError(snap(''))).toMatchObject({
+        sqlstate: SQLSTATE.CHECK_VIOLATION,
+        constraint: 'reports_message_snapshot_length',
+      });
+      expect(
+        await sqlError(snap(edge(TEXT_LIMITS.MESSAGE_BODY.max + 1))),
+      ).toMatchObject({
+        constraint: 'reports_message_snapshot_length',
+      });
+    });
+
+    it('stores the text exactly, including Armenian text and line breaks', async () => {
+      const { member, message } = await chat();
+      const text = 'Բարև Ձեզ\nsecond line "quoted"';
+      const id = await reportMessage(pool, member.id, message, {
+        snapshot: text,
+      });
+      const { rows } = await pool.query(
+        'SELECT message_snapshot FROM reports WHERE id = $1',
+        [id],
+      );
+      expect(rows[0].message_snapshot).toBe(text);
+    });
+
+    it('keeps the original body when the message is edited after the report (the reason the snapshot exists)', async () => {
+      const { member, message } = await chat();
+      const id = await reportMessage(pool, member.id, message, {
+        snapshot: 'hello',
+      });
+      await pool.query(
+        "UPDATE messages SET body = 'edited text', edited_at = now() WHERE id = $1",
+        [message],
+      );
+      const snapshot = await pool.query(
+        'SELECT message_snapshot FROM reports WHERE id = $1',
+        [id],
+      );
+      const current = await pool.query(
+        'SELECT body FROM messages WHERE id = $1',
+        [message],
+      );
+      expect(snapshot.rows[0].message_snapshot).toBe('hello');
+      expect(current.rows[0].body).toBe('edited text');
+    });
+
+    it('a USER report with a snapshot is still rejected by the target shape', async () => {
+      const { creator, member } = await chat();
+      expect(
+        await sqlError(
+          createReport(pool, member.id, {
+            targetType: 'USER',
+            targetUserId: creator.id,
+            snapshot: 'x',
+          }),
+        ),
+      ).toMatchObject({ constraint: 'reports_target_shape' });
     });
   });
 

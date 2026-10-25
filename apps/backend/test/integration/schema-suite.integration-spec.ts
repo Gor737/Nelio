@@ -111,6 +111,7 @@ const CHECKS = [
   'lessons_title_length',
   'messages_body_length',
   'reports_description_length',
+  'reports_message_snapshot_length',
   'reports_resolution_note_length',
   'sections_title_length',
   'tags_name_length',
@@ -258,6 +259,7 @@ const LIMIT_CONSTRAINTS: Record<string, keyof typeof TEXT_LIMITS> = {
   conversations_title_length: 'GROUP_TITLE',
   messages_body_length: 'MESSAGE_BODY',
   reports_description_length: 'REPORT_DESCRIPTION',
+  reports_message_snapshot_length: 'MESSAGE_BODY', // the snapshot is a copy of a message body (Decision 77)
   reports_resolution_note_length: 'REPORT_RESOLUTION_NOTE',
 };
 /** TEXT_LIMITS entries that deliberately have no SQL CHECK, and why. A new entry must be mapped above or listed here. */
@@ -408,7 +410,7 @@ describe('whole schema (real PostgreSQL, built from all migrations)', () => {
     it('every TEXT_LIMITS entry is either checked in SQL or explicitly excluded', () => {
       const mapped = Object.values(LIMIT_CONSTRAINTS) as string[];
       const excluded = Object.keys(LIMITS_WITHOUT_SQL);
-      expect([...mapped, ...excluded].sort()).toEqual(
+      expect([...new Set(mapped), ...excluded].sort()).toEqual(
         Object.keys(TEXT_LIMITS).sort(),
       );
     });

@@ -85,6 +85,7 @@
   - [ ] Cross-module writes go through the owner's service (single Progress exception)
   - [ ] Every request DTO field has a validator decorator
   - [ ] Progress reads are one SQL statement
+  - [ ] Every raw-SQL `UPDATE` on a table that has `updated_at` sets `updated_at = now()` explicitly (Prisma maintains it only for its own updates; no trigger)
   - [ ] The module's HTTP tests assert with `test/support/log-capture.ts` that request bodies, passwords, tokens, cookies and message bodies do not appear in logs (Decision 167)
 
 ---
@@ -359,9 +360,9 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [x] FK actions read from the DB catalog match the decision 91 delete-behavior table
 - [x] Every partial index and constraint from the Phase 10 index/constraint list exists
 
-**Status (2026-10-26):** implemented in `apps/backend/prisma/schema/` (`catalog`, `courses`, `notifications`, `content`, `enrollments`, `progress`, `chat`, `moderation`) and six migrations in `apps/backend/prisma/migrations/`: G1 (M5), `g2_catalog_courses_notifications`, `g3_content`, `g4_learning`, `g5_chat_reports`, and `g1_text_limits` (SQL CHECKs for the five G1 columns whose limits were approved in M4 but had no CHECK). All 25 entities exist. Each migration was created with `--create-only`, its generated SQL was read (no unintended `DROP`), the hand-written part was appended, and it was applied to the development database `nelio`; `prisma migrate diff` reports no drift against the migration history (shadow replay) or the live database.
-- Tests (`apps/backend/test/integration/`): `g2`…`g5-constraints` (41, 26, 24, 43 tests) and `schema-suite` (37: exact inventory of tables, enums, CHECKs, partial indexes and other indexes; FK actions vs Decision 91; SQL limits vs `TEXT_LIMITS`; replay + drift across all six migrations). The replay/drift tests moved from the G1 spec into `schema-suite`. Mutation checks on every group (loosening a CHECK, dropping a partial `WHERE`, changing an FK action, a unique index, or a constant) make 4-6 tests fail each.
-- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 11 (**pending owner review**): conversation shape and untitled channels, `client_id` as `uuid`, `updated_at` rule, no default for `enrollment_policy`, `search_vector` over title + summary + description, `video_external_id` 1-64, the `content_blocks (lesson_id, position)` index, snapshot `jsonb`, G1 limit CHECKs.
+**Status (2026-10-26):** implemented in `apps/backend/prisma/schema/` (`catalog`, `courses`, `notifications`, `content`, `enrollments`, `progress`, `chat`, `moderation`) and seven migrations in `apps/backend/prisma/migrations/`: G1 (M5), `g2_catalog_courses_notifications`, `g3_content`, `g4_learning`, `g5_chat_reports`, `g1_text_limits` (SQL CHECKs for the five G1 columns whose limits were approved in M4 but had no CHECK) and `g5_report_snapshot_text` (the report snapshot became `text` with a 1-2000 CHECK, Decision 77). All 25 entities exist. Each migration was created with `--create-only`, its generated SQL was read (no unintended `DROP`), the hand-written part was appended, and it was applied to the development database `nelio`; `prisma migrate diff` reports no drift against the migration history (shadow replay) or the live database.
+- Tests (`apps/backend/test/integration/`): `g2`…`g5-constraints` (41, 26, 24, 48 tests) and `schema-suite` (38: exact inventory of tables, enums, CHECKs, partial indexes and other indexes; FK actions vs Decision 91; SQL limits vs `TEXT_LIMITS`; replay + drift across all seven migrations). The replay/drift tests moved from the G1 spec into `schema-suite`. Mutation checks on every group (loosening a CHECK, dropping a partial `WHERE`, changing an FK action, a unique index, or a constant) make 4-6 tests fail each.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 11 (**approved by the owner on 2026-10-26** after review, with one revision): conversation shape and untitled channels, `client_id` as `uuid`, `updated_at` rule (with the raw-SQL review rule), no default for `enrollment_policy` (required by the API), `search_vector` over title + summary + description, `video_external_id` 1-64, the `content_blocks (lesson_id, position)` index, the report snapshot as `text` (revised from `jsonb`), G1 limit CHECKs. Follow-up items placed in the roadmap: Definition of Done (raw-SQL `updated_at`), M9c (snapshot), M10b (lesson deletion rule, video id validation), M11b (`enrollmentPolicy` required).
 - Not enforced by the database on purpose (service layer, architecture section 9): a DM has exactly two members and a pair row; the sender is an active member; the lesson is published and the enrollment active at completion; `last_visited_lesson_id` belongs to the same course; teacher/student exclusion; no return to `DRAFT` once enrollments exist.
 
 **Exit:** full constraint suite green. Schema frozen except via new migration under the Change Protocol.
@@ -411,7 +412,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 ### M9c — Moderation
 - [ ] `BlockService` (`isBlockedEitherWay`, `assertCanAdd`); block endpoints; `CANNOT_BLOCK_SELF`, `CANNOT_BLOCK_ADMIN`
-- [ ] Report creation (message and user), snapshot taken in the same statement
+- [ ] Report creation (message and user), snapshot taken in the same statement: `message_snapshot` is the message body as **text** (1-2000 characters, `reports_message_snapshot_length`), required for message reports and absent for user reports (Decision 77, owner decision 2026-10-26)
 - [ ] Tests: idempotent block; no "who blocked me" exposure; snapshot survives later edit; non-members 404; self-report 400; duplicate open report 409; reported message can't be hard-deleted
 
 ### M9d — Progress
@@ -441,6 +442,8 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [ ] Outline vs public syllabus; student vs teacher lesson DTOs; signed download URLs re-checked each request
 - [ ] Video URL parser (YouTube/Vimeo only; provider + id stored; embed URL built server-side); Markdown stored as text with length limit
 - [ ] Lesson status changes call `recheckCourse` inside Course-X
+- [ ] **Permanent lesson deletion rule (approved 2026-10-26):** a lesson may be hard-deleted only if it was never published (`first_published_at IS NULL`) **and** has no completions; "not currently published" is not enough (an `ARCHIVED` lesson that was published once is not deletable). Test both conditions, plus an `ARCHIVED` lesson that was never published (deletable)
+- [ ] **Provider-specific video id validation (approved 2026-10-26, not implemented before M10b):** the id is checked against the provider's own pattern (YouTube and Vimeo) in the Content module, in addition to the SQL length check (1-64); the embed URL is built server-side from provider + id only. Tests: hostile ids (quotes, slashes, `javascript:`, whitespace, over-long) rejected for both providers
 - [ ] Tests: stale reorder → 409; parallel appends don't collide; publish needs ≥1 block; lesson with completion can't be deleted; archive before delete; cross-course move 404; students get 404 for non-published lessons everywhere (incl. download); `COURSE_ARCHIVED`/`COURSE_ADMIN_LOCKED` precedence on every mutation; unsupported video hosts rejected; `FILE` block checks kind/uploader/uniqueness; Bug 1 at HTTP level
 
 ### M10c — Chat (three steps, in order)
@@ -491,6 +494,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [ ] Add one real-login smoke path (register → verify → login → authenticated call)
 
 ### M11b — Courses
+- [ ] **`enrollmentPolicy` is required on course create (approved 2026-10-26):** no database default and no silent API default; a missing or unknown value is 400 `VALIDATION_FAILED`; the OpenAPI schema lists it as required (a test reads the generated document); the frontend create-course form must send it explicitly
 - [ ] Create (User-S on self), patch (Owner only), tags, publish/archive/restore/delete, viewer block, public catalog with full-text search and filters, syllabus, teachers list, `GET /me/teaching/courses`, assistants, ownership transfer, `ownsCourses`, lifecycle audit rows
 - [ ] First publish creates channel via `CourseChannelService`; add/remove Assistant call `addMember`/`endMembership`
 - [ ] Tests: Course-X on every lifecycle/team operation; publish needs category, summary, ≥1 published lesson; channel created once (even for concurrent publishes); no return to draft; delete only when never published (FK backstops give loud 409); one Owner always, demote-first, previous Owner becomes Assistant; transfer to non-Teacher/student refused; Assistants can't change settings; `INVITATION_ONLY` absent from search but visible to invitee; Armenian/Russian/English search under `simple`; team operations work in any course status; every lifecycle transition audited
@@ -565,7 +569,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [ ] S3 bucket policy: private attachments, public avatars/covers
 - [ ] Database backups **and a tested restore** (deleted-message text persists in backups, decision 86)
 - [ ] Runbook: sweeper logs signal a bug; JWT secret rotation logs everyone out; how to create an Admin
-- [ ] Frontend contract notes: share one in-flight refresh; refresh before socket reconnect; render private pages client-side; sort messages by `seq` and detect gaps; render Markdown safely; 401 vs 403 handling (`INVALID_CURRENT_PASSWORD` is 403 by design)
+- [ ] Frontend contract notes: share one in-flight refresh; refresh before socket reconnect; render private pages client-side; sort messages by `seq` and detect gaps; render Markdown safely; send `clientId` as a UUID from `crypto.randomUUID()` and reuse it on every retry of the same message; send `enrollmentPolicy` explicitly when creating a course; treat 503 `SERVICE_UNAVAILABLE` as "try again later"; 401 vs 403 handling (`INVALID_CURRENT_PASSWORD` is 403 by design)
 - [ ] OpenAPI document handed to the frontend
 
 ---

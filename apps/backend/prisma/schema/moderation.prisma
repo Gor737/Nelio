@@ -52,8 +52,10 @@ model Report {
   targetUserId    String?          @map("target_user_id") @db.Uuid
   reason          ReportReason
   description     String?
-  // Evidence copied at report time (Decision 77): { body, senderId, conversationId, seq, createdAt }. Never returned to the reporter.
-  messageSnapshot Json?            @map("message_snapshot")
+  // Evidence copied at report time (Decision 77): the TEXT of the message body, so it survives a later edit. Everything else
+  // about the message (sender, conversation, seq, time) cannot change and is read from the message row. Required for MESSAGE
+  // reports, absent for USER reports; 1-2000 characters (TEXT_LIMITS.MESSAGE_BODY). Never returned to the reporter.
+  messageSnapshot String?          @map("message_snapshot")
   status          ReportStatus     @default(OPEN)
   reviewedBy      String?          @map("reviewed_by") @db.Uuid
   reviewedAt      DateTime?        @map("reviewed_at") @db.Timestamptz(6)

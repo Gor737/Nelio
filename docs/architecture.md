@@ -337,7 +337,7 @@ User 1──N Notification; AuditLog (actor FK, loose target)
 |---|---|
 | `Notification` | id, user_id, type (12 values), course_id?, actor_id?, data jsonb, read_at?, created_at |
 | `Block` | PK (blocker_id, blocked_id), created_at |
-| `Report` | id, reporter_id, target_type (MESSAGE/USER), message_id?, target_user_id?, reason (SPAM/HARASSMENT/INAPPROPRIATE/OTHER), description?, message_snapshot?, status (OPEN/DISMISSED/ACTIONED), reviewed_by?, reviewed_at?, resolution_note?, created_at |
+| `Report` | id, reporter_id, target_type (MESSAGE/USER), message_id?, target_user_id?, reason (SPAM/HARASSMENT/INAPPROPRIATE/OTHER), description?, message_snapshot? (text: the message body at report time, 1–2000 characters, required for message reports, Decision 77), status (OPEN/DISMISSED/ACTIONED), reviewed_by?, reviewed_at?, resolution_note?, created_at |
 | `AuditLog` | id, actor_id, action (text, validated against code constants), target_type, target_id (loose, no FK), metadata jsonb, created_at (immutable) |
 
 ### Chat (4)
@@ -519,6 +519,7 @@ Check order (first failure wins): `429 → 401 → 403 ACCOUNT_SUSPENDED → gua
 | `/me` routes | `/me`, `/me/enrollments`, `/me/teaching/courses`, `/me/invitations`, `/me/blocks`, `/me/notifications`, `/me/conversations`, `/me/presence` |
 | Responses | Allowlist response DTOs; email only in `/me` and Admin endpoints |
 | Docs | Swagger/OpenAPI generated from DTOs, listing error codes per endpoint |
+| Required choices | `POST /courses` requires `enrollmentPolicy` (`OPEN`, `APPROVAL_REQUIRED` or `INVITATION_ONLY`); the database has no default and the API never defaults it silently (owner decision, 2026-10-26). A request without it is 400 `VALIDATION_FAILED`, and the OpenAPI schema lists the field as required |
 
 ### Endpoint groups
 

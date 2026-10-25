@@ -130,7 +130,8 @@ export interface ReportOverrides {
   targetType: 'MESSAGE' | 'USER';
   messageId?: string | null;
   targetUserId?: string | null;
-  snapshot?: unknown;
+  /** The message body at report time (text). */
+  snapshot?: string | null;
   reason?: 'SPAM' | 'HARASSMENT' | 'INAPPROPRIATE' | 'OTHER';
   description?: string | null;
   status?: 'OPEN' | 'DISMISSED' | 'ACTIONED';
@@ -148,7 +149,7 @@ export async function createReport(
   const { rows } = await q.query<{ id: string }>(
     `INSERT INTO reports (reporter_id, target_type, message_id, target_user_id, reason, description, message_snapshot,
                           status, reviewed_by, reviewed_at, resolution_note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11) RETURNING id`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
     [
       reporterId,
       overrides.targetType,
@@ -156,9 +157,7 @@ export async function createReport(
       overrides.targetUserId ?? null,
       overrides.reason ?? 'SPAM',
       overrides.description ?? null,
-      overrides.snapshot === undefined
-        ? null
-        : JSON.stringify(overrides.snapshot),
+      overrides.snapshot ?? null,
       overrides.status ?? 'OPEN',
       overrides.reviewedBy ?? null,
       overrides.reviewedAt ?? null,
@@ -177,7 +176,7 @@ export const reportMessage = (
   createReport(q, reporterId, {
     targetType: 'MESSAGE',
     messageId,
-    snapshot: { body: 'hello' },
+    snapshot: 'hello',
     ...overrides,
   });
 
