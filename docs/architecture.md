@@ -445,7 +445,7 @@ Optional-auth endpoints: no token means anonymous; an invalid or expired token i
 ### Key rules
 
 - **Passwords:** Argon2id (OWASP parameters verified at implementation), length 10–128, common-password check, no composition rules, dummy hash for unknown emails, throttle before hashing, no rehash in v1.
-- **Email tokens** (verification 24 h, reset 1 h): hashed, single-use via conditional update, consumed by POST only, newest-token cooldown (60 s).
+- **Email tokens** (verification 24 h = `TIME_LIMITS.EMAIL_VERIFICATION_TOKEN_TTL_MS`, reset 1 h = `PASSWORD_RESET_TOKEN_TTL_MS`; the stored `expires_at` and the "valid for N hours" in the email both come from the one function `emailTokenLifetime(type)`, so they always agree): hashed, single-use via conditional update, consumed by POST only, newest-token cooldown (60 s).
 - **Registration:** unverified re-registration replaces the password; verified accounts are unchanged and receive an "already registered" email. Password users must verify email before login.
 - **Google:** frontend-supplied ID token verified (signature, audience, issuer, expiry, `email_verified`); the four sign-in rules (match by `sub`; link to existing verified-email user, clearing the password of an unverified account; create new; reject unverified Google email). Match on `sub`, never email. No Google tokens stored. A login method must remain (`NO_LOGIN_METHOD_REMAINING`).
 - **Revocation:** `revokeAllSessions(tx, userId)` revokes refresh tokens and sets `tokens_valid_after`, inside the caller's transaction. Used by suspension, password reset, and logout-all. Change-password revokes other sessions but keeps the current device's family. Teacher revocation does not revoke sessions.

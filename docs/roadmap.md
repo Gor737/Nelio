@@ -396,7 +396,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Status (2026-10-26):** implemented in `apps/backend/src/common/{guards,access,decorators}` (`TokenVerifier`, `Authenticator`, `JwtAuthGuard`, `RolesGuard`, `CourseRoleGuard`, `UserRateLimitGuard`, `RateLimiter`, `CourseAccessService`, `@Public/@OptionalAuth/@Roles/@CourseRole/@CurrentUser`, `AuthCoreModule`), `src/infrastructure/realtime` (Socket.IO gateway, handshake, registry, `RealtimeService`, configured adapter) and `src/infrastructure/mail` (`MailService`, templates, nodemailer transport), with the SMTP settings in the validated configuration. The global guards are registered in the order of the check list (`GLOBAL_PROVIDERS`). The OpenAPI document now derives each operation's security and its 400/401/403/429/500/503 responses from the guard decorators.
 - Tests: `test/common/token-verifier.spec.ts` (41), `course-access.spec.ts` (the 108-case grid), `rate-limiter.spec.ts`; `test/infrastructure/mail.spec.ts`; `test/app.e2e-spec.ts` (57: check order, guard order, Per-conversation burst, mail failure, OpenAPI security); `test/integration/auth-guards`, `course-access`, `realtime` (27, real Socket.IO client) and `mail-smtp` (real SMTP against Mailpit; skips itself when Mailpit is not running). Mutation checks on 14 security-relevant lines (algorithm pinning, expiry, suspension, `tokens_valid_after`, visibility rules, guard order, user-keyed limits, the Origin check, `disconnectUser`, mail errors) were all caught by tests.
 - **The M6 gaps are closed:** Per-conversation burst now limits (the "KNOWN GAP" test was replaced by tests that the 31st request is 429, and that REST and Socket.IO share one budget); `ValidationPipe` is verified on gateway payloads; the JWT guard runs after the rate limiter (test fails if the order changes).
-- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 12 (**approved by the owner on 2026-10-26**, except the email token lifetime, which stays unresolved until M11a). In particular the user-keyed 429 comes after 401 (it cannot come before), and two readings of Decisions 119/121 in the visibility grid.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 12 (**approved by the owner on 2026-10-26** (its email token lifetime item was resolved in M11a)). In particular the user-keyed 429 comes after 401 (it cannot come before), and two readings of Decisions 119/121 in the visibility grid.
 - Found while testing: Nest does not apply the global exception filter to gateways (each gateway must bind it); connecting to SMTP by the name `localhost` stalls the first connection by about 5 s, so the development default is `127.0.0.1`.
 
 ---
@@ -489,7 +489,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - Found while testing: background delivery after a test ended deadlocked with the next test's `TRUNCATE`; `ChatDeliveryService.idle()` (also awaited at shutdown) fixes it and the chat specs wait on it after every test.
 - Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 14 (reviewed by the owner on 2026-10-26: `TEACHER_REAPPLIED`, the four conversation events, `409 RESOURCE_CONFLICT` for a full group, deleting the last block of a published lesson, unsanitized Markdown storage and the caller in their own search are **APPROVED**; the private Vimeo hash is **UNRESOLVED**; the rest is still proposed).
 - Safety-net jobs are callable methods only (`CourseChannelService.reconcileAll`); their schedules are M13, as is wiring `CourseChannelService` into publish, enrollment and team transitions (M11).
-- Open: the same items as M9 (MinIO development store, the first CI run, `npm audit`, the email token lifetime in M11a), and the **private Vimeo hash** (the parser accepts `vimeo.com/<id>/<hash>` and drops the hash; the owner kept this unresolved, so private Vimeo videos are unsupported until it is decided).
+- Open: the same items as M9 (MinIO development store, the first CI run, `npm audit`), and the **private Vimeo hash** (the parser accepts `vimeo.com/<id>/<hash>` and drops the hash; the owner kept this unresolved, so private Vimeo videos are unsupported until it is decided).
 
 ---
 
@@ -498,41 +498,49 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M10 · **Unblocks:** M12. Order: Auth → Courses → Enrollments.
 
 ### M11a — Auth (in this order)
-- [ ] **Reconcile the email-token lifetimes first (open since M8, owner decision 2026-10-26):** architecture section 11 says verification 24 h and reset 1 h, but `TIME_LIMITS.EMAIL_TOKEN_TTL_MS` is one value (1 h). Decide the requirement, then make the constant(s), the architecture text, the token expiry and the `validForHours` passed to `MailService` agree, with a test that the email and the stored `expires_at` state the same lifetime
-1. [ ] `TokenIssuer`, refresh families, `revokeAllSessions(tx, userId)` (revokes tokens + `UsersService.setTokensValidAfter` in the same transaction)
-2. [ ] Register, verify, resend, forgot, reset (always-202, account-state table, newest-token cooldown, single-use conditional update)
-3. [ ] Login, refresh, logout, logout-all, change-password (cookie `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`; Origin check on refresh/logout)
-4. [ ] Google sign-in, link, unlink (ID-token verification **before** any transaction, then the four rules)
-5. [ ] Expired-token cleanup job
+- [x] **Reconcile the email-token lifetimes first (open since M8, owner decision 2026-10-26):** architecture section 11 says verification 24 h and reset 1 h, but `TIME_LIMITS.EMAIL_TOKEN_TTL_MS` is one value (1 h). Decide the requirement, then make the constant(s), the architecture text, the token expiry and the `validForHours` passed to `MailService` agree, with a test that the email and the stored `expires_at` state the same lifetime
+1. [x] `TokenIssuer`, refresh families, `revokeAllSessions(tx, userId)` (revokes tokens + `UsersService.setTokensValidAfter` in the same transaction)
+2. [x] Register, verify, resend, forgot, reset (always-202, account-state table, newest-token cooldown, single-use conditional update)
+3. [x] Login, refresh, logout, logout-all, change-password (cookie `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`; Origin check on refresh/logout)
+4. [x] Google sign-in, link, unlink (ID-token verification **before** any transaction, then the four rules)
+5. [x] Expired-token cleanup job
 
 **Verify:** current OWASP Argon2id parameters; `google-auth-library` verification API; `Secure` cookie behavior on `localhost`.
 
 **Tests:**
-- [ ] `register` with `role: ADMIN` → 400
-- [ ] Unknown email / wrong password / Google-only account → identical status and body (dummy hash)
-- [ ] Refresh rotates; reuse in grace window → 409 no revocation; reuse after window revokes whole family and revocation persists after the 401
-- [ ] Two parallel refreshes → one new token
-- [ ] Refresh after 90 days from `family_started_at` fails
-- [ ] Reset invalidates old access tokens and all sessions; change-password keeps current device family
-- [ ] Email tokens single-use, expire; verification never logs in
-- [ ] Unverified re-registration replaces password; verified case changes nothing
-- [ ] Google link to unverified account clears password and verifies; unverified Google email rejected; last login method can't be unlinked; two simultaneous first sign-ins → one user
-- [ ] Login throttled before hashing
-- [ ] Add one real-login smoke path (register → verify → login → authenticated call)
+- [x] `register` with `role: ADMIN` → 400
+- [x] Unknown email / wrong password / Google-only account → identical status and body (dummy hash)
+- [x] Refresh rotates; reuse in grace window → 409 no revocation; reuse after window revokes whole family and revocation persists after the 401
+- [x] Two parallel refreshes → one new token
+- [x] Refresh after 90 days from `family_started_at` fails
+- [x] Reset invalidates old access tokens and all sessions; change-password keeps current device family
+- [x] Email tokens single-use, expire; verification never logs in
+- [x] Unverified re-registration replaces password; verified case changes nothing
+- [x] Google link to unverified account clears password and verifies; unverified Google email rejected; last login method can't be unlinked; two simultaneous first sign-ins → one user
+- [x] Login throttled before hashing
+- [x] Add one real-login smoke path (register → verify → login → authenticated call)
 
 ### M11b — Courses
-- [ ] **`enrollmentPolicy` is required on course create (approved 2026-10-26):** no database default and no silent API default; a missing or unknown value is 400 `VALIDATION_FAILED`; the OpenAPI schema lists it as required (a test reads the generated document); the frontend create-course form must send it explicitly
-- [ ] Create (User-S on self), patch (Owner only), tags, publish/archive/restore/delete, viewer block, public catalog with full-text search and filters, syllabus, teachers list, `GET /me/teaching/courses`, assistants, ownership transfer, `ownsCourses`, lifecycle audit rows
-- [ ] First publish creates channel via `CourseChannelService`; add/remove Assistant call `addMember`/`endMembership`
-- [ ] Tests: Course-X on every lifecycle/team operation; publish needs category, summary, ≥1 published lesson; channel created once (even for concurrent publishes); no return to draft; delete only when never published (FK backstops give loud 409); one Owner always, demote-first, previous Owner becomes Assistant; transfer to non-Teacher/student refused; Assistants can't change settings; `INVITATION_ONLY` absent from search but visible to invitee; Armenian/Russian/English search under `simple`; team operations work in any course status; every lifecycle transition audited
+- [x] **`enrollmentPolicy` is required on course create (approved 2026-10-26):** no database default and no silent API default; a missing or unknown value is 400 `VALIDATION_FAILED`; the OpenAPI schema lists it as required (a test reads the generated document); the frontend create-course form must send it explicitly
+- [x] Create (User-S on self), patch (Owner only), tags, publish/archive/restore/delete, viewer block, public catalog with full-text search and filters, syllabus, teachers list, `GET /me/teaching/courses`, assistants, ownership transfer, `ownsCourses`, lifecycle audit rows
+- [x] First publish creates channel via `CourseChannelService`; add/remove Assistant call `addMember`/`endMembership`
+- [x] Tests: Course-X on every lifecycle/team operation; publish needs category, summary, ≥1 published lesson; channel created once (even for concurrent publishes); no return to draft; delete only when never published (FK backstops give loud 409); one Owner always, demote-first, previous Owner becomes Assistant; transfer to non-Teacher/student refused; Assistants can't change settings; `INVITATION_ONLY` absent from search but visible to invitee; Armenian/Russian/English search under `simple`; team operations work in any course status; every lifecycle transition audited
 
 ### M11c — Enrollments
-- [ ] Single table-driven allowed-transition function (decisions 70, 123)
-- [ ] Enroll/request/return, leave, last-visited, teacher queue (approve, reject, remove, reinstate), invitations (create-or-reset, `INVITATION_PENDING`, revoke by inviter or Owner, accept, decline), student lists and "my courses" via `ProgressQueries`, notification events after commit, audit rows
-- [ ] Every entry into `ACTIVE`: Course-S → Enrollment row → channel membership upsert → `recheckEnrollment` in one transaction
-- [ ] Tests: exhaustive status × action table; **add Assistant vs enroll** exactly one wins (both orders and parallel); leave-then-return keeps membership matching; accept vs revoke exactly one wins; accept when `ACTIVE` → `ALREADY_ENROLLED` and rollback; double-click harmless; approve/reinstate blocked on archived/locked, leave and Owner removal allowed; returning student rechecked for completion; invitation expiry derived (no job); removal keeps completions, reinstatement restores them; lists never include email
+- [x] Single table-driven allowed-transition function (decisions 70, 123)
+- [x] Enroll/request/return, leave, last-visited, teacher queue (approve, reject, remove, reinstate), invitations (create-or-reset, `INVITATION_PENDING`, revoke by inviter or Owner, accept, decline), student lists and "my courses" via `ProgressQueries`, notification events after commit, audit rows
+- [x] Every entry into `ACTIVE`: Course-S → Enrollment row → channel membership upsert → `recheckEnrollment` in one transaction
+- [x] Tests: exhaustive status × action table; **add Assistant vs enroll** exactly one wins (both orders and parallel); leave-then-return keeps membership matching; accept vs revoke exactly one wins; accept when `ACTIVE` → `ALREADY_ENROLLED` and rollback; double-click harmless; approve/reinstate blocked on archived/locked, leave and Owner removal allowed; returning student rechecked for completion; invitation expiry derived (no job); removal keeps completions, reinstatement restores them; lists never include email
 
 **Exit:** cross-module races pass; a full learning journey works through real HTTP with real login.
+
+**Status (2026-10-26):** implemented and verified: Auth, Courses and Enrollments are green, and a full learning journey works through real HTTP with real login (`journey.integration-spec.ts`). Code: `src/modules/{auth,courses,enrollments}`; in `common` the email-token lifetime helper `constants/email-tokens.ts`; two new dependencies (`argon2`, `google-auth-library`, exact pins).
+- **Email-token lifetime resolved first:** verification 24 h and reset 1 h (the architecture text); one function produces the stored `expires_at` and the `validForHours` in the email; unit and integration tests prove they agree.
+- Tests: Auth `auth.integration-spec.ts` (50), `password-policy.spec.ts` (21), `email-tokens.spec.ts` (4); Courses `courses.integration-spec.ts` (35); Enrollments `enrollments.integration-spec.ts` (31) and `transitions.spec.ts` (10, all 126 status x action x policy cases); `journey.integration-spec.ts` (1). Mutation checks on the security- and concurrency-relevant lines (token rotation and reuse, single use and expiry, session revocation, cookie flags, Origin check, Google rules, Course-X on every lifecycle and team operation, the Owner re-check, catalog filters, the transition table, Course-S, the teacher exclusion, invitation conditions) are listed in the final report of the milestone.
+- **Verified for M11a:** OWASP Argon2id profile (19 MiB, 2 iterations, 1 lane), `OAuth2Client.verifyIdToken` of `google-auth-library`, and the `Secure` cookie on `localhost` (browsers treat localhost as secure for it in Chrome and Firefox; not tried in a browser here).
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 15 (**PROPOSED, not yet reviewed**; it lists first the three cases that use an existing code because the registry has none).
+- Callable only, schedule in M13: `AuthCleanupService.run`. Admin (M12) reuses `SessionsService.revokeAllSessions`, `CourseTeamService.*InTx` / `ownsCourses` and `EnrollmentsService.remove` / `reinstate`.
+- Open: MinIO development store, the first CI run, `npm audit` (M14), the private Vimeo hash (M10b), `PER_CONVERSATION_BURST` is done (M10c).
 
 ---
 

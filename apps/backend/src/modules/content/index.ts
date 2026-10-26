@@ -12,3 +12,4 @@ export {
   type ParsedVideo,
   type VideoProvider,
 } from './services/video-url.js';
+export { SyllabusSectionDto } from './dto/content.dto.js';

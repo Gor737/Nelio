@@ -27,6 +27,7 @@ describe('configuration', () => {
       databaseUrl: valid.DATABASE_URL,
       jwtSecret: valid.JWT_SECRET,
       frontendOrigin: 'http://localhost:3001',
+      googleClientId: null,
       trustProxy: 0,
       logLevel: 'info',
       swaggerEnabled: true,
@@ -195,6 +196,19 @@ describe('configuration', () => {
         loadConfig({ ...valid, FRONTEND_ORIGIN: 'http://localhost:4200' })
           .frontendOrigin,
       ).toBe('http://localhost:4200');
+    });
+
+    it('GOOGLE_CLIENT_ID is optional: unset or blank means Google sign-in is not configured, a value is trimmed and kept', () => {
+      expect(loadConfig(valid).googleClientId).toBeNull();
+      expect(
+        loadConfig({ ...valid, GOOGLE_CLIENT_ID: '   ' }).googleClientId,
+      ).toBeNull();
+      expect(
+        loadConfig({
+          ...valid,
+          GOOGLE_CLIENT_ID: ' 123-abc.apps.googleusercontent.com ',
+        }).googleClientId,
+      ).toBe('123-abc.apps.googleusercontent.com');
     });
 
     it('PORT, TRUST_PROXY, LOG_LEVEL, SWAGGER_ENABLED and NODE_ENV are validated', () => {

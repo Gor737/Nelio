@@ -73,7 +73,8 @@ describe('JwtAuthGuard (secure by default)', () => {
     await get('/probe-auth/me', `Bearer ${swapped}`).expect(401);
     await get(
       '/probe-auth/me',
-      `Bearer ${head}.${payload}.${signature.slice(0, -2)}AA`,
+      // always a different ending (a signature that happens to end in "AA" would otherwise stay unchanged and valid)
+      `Bearer ${head}.${payload}.${signature.slice(0, -2)}${signature.endsWith('AA') ? 'BB' : 'AA'}`,
     ).expect(401);
   });
 

@@ -60,6 +60,8 @@ export interface AppConfig {
   readonly databaseUrl: string;
   readonly jwtSecret: string;
   readonly frontendOrigin: string;
+  /** OAuth client id that Google ID tokens must be issued for (`aud`). Null: Google sign-in is not configured and answers 503. */
+  readonly googleClientId: string | null;
   readonly trustProxy: number;
   readonly logLevel: LogLevel;
   readonly swaggerEnabled: boolean;
@@ -298,6 +300,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl,
     jwtSecret,
     frontendOrigin,
+    googleClientId: (env.GOOGLE_CLIENT_ID ?? '').trim() || null,
     trustProxy,
     logLevel,
     swaggerEnabled,

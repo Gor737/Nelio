@@ -85,14 +85,20 @@ export const TIME_LIMITS = {
   ACCESS_TOKEN_TTL_MS: 15 * 60 * 1000,
   /** Roadmap M5: refresh token family capped at 90 days from `family_started_at`. */
   REFRESH_FAMILY_MAX_AGE_DAYS: 90,
+  /** Architecture section 11 / Decision 144: refresh token 30-day sliding idle expiry (capped by the 90-day family limit). */
+  REFRESH_TOKEN_IDLE_DAYS: 30,
+  /** Architecture section 11: newest-token cooldown for email tokens (60 s). */
+  EMAIL_TOKEN_COOLDOWN_MS: 60 * 1000,
   /** Decision 145: about 10 seconds of grace for a reused refresh token. */
   REFRESH_REUSE_GRACE_MS: 10 * 1000,
   /** Decision 75/architecture: read notifications are deleted after about 90 days. */
   NOTIFICATION_RETENTION_DAYS: 90,
   /** Invitations expire after 7 days (architecture/decision log: "a new 7-day expiry"). */
   INVITATION_TTL_DAYS: 7,
-  /** Chosen: single-use email verification and password-reset tokens. */
-  EMAIL_TOKEN_TTL_MS: 60 * 60 * 1000,
+  /** Architecture section 11: an email-verification token is valid for 24 hours (owner decision 2026-10-26: the architecture text is the requirement). */
+  EMAIL_VERIFICATION_TOKEN_TTL_MS: 24 * 60 * 60 * 1000,
+  /** Architecture section 11: a password-reset token is valid for 1 hour. */
+  PASSWORD_RESET_TOKEN_TTL_MS: 60 * 60 * 1000,
   /** Architecture section 14: presence offline debounce about 5 s; typing expiry about 5 s. */
   PRESENCE_OFFLINE_DEBOUNCE_MS: 5 * 1000,
   TYPING_EXPIRY_MS: 5 * 1000,

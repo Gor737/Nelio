@@ -461,7 +461,8 @@ describe('docs/proposed-defaults.md', () => {
       'CURSOR_PAGE_SIZE_DEFAULT',
       'CURSOR_PAGE_SIZE_MAX',
       'TAGS_PER_COURSE_MAX',
-      'EMAIL_TOKEN_TTL_MS',
+      'EMAIL_VERIFICATION_TOKEN_TTL_MS',
+      'PASSWORD_RESET_TOKEN_TTL_MS',
     ];
     expect(names.filter((name) => !doc.includes(name))).toEqual([]);
     expect(names.length).toBeGreaterThan(60);
