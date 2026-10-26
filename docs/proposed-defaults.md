@@ -145,11 +145,16 @@ M7 built schema groups G2-G5. The documents fix the tables, columns, CHECKs and 
 - **Foreign-key `ON UPDATE`** is Prisma's default `CASCADE` everywhere (ids never change).
 - **Open-report uniqueness** is per reporter and target: one `OPEN` report of a given message, and one of a given user, per reporter. A new report is possible once the previous one is `DISMISSED` or `ACTIONED`.
 
-## 12. Added in M8 (PROPOSED, pending owner review)
+## 12. Added in M8 (approved by the owner 2026-10-26, after review)
 
 M8 built the guards, the course-access service, the Socket.IO server and the mail service. The documents fix the algorithm and the
 codes (architecture sections 11, 12 and 14, Decisions 107, 108, 119, 121, 136, 140, 152, 167); the points below were not
-specified and were decided by the implementer. They are **not yet approved**.
+specified and were proposed by the implementer. The owner approved them on 2026-10-26, with the review outcome below.
+
+**Review outcome (2026-10-26)**
+- **Approved:** the check order with user-keyed 429 after 401; the visibility readings for PENDING, REMOVED, REJECTED and valid pending invitations; the handshake Origin policy; the email wording and page paths; the mail defaults (SMTP defaults, 15 s send deadline) and the 64 KB Socket.IO packet cap.
+- **Kept unresolved:** the email token lifetime (see the last Mail bullet). The implementation is not changed; M11a reconciles it.
+- **Scheduled, not done:** applying `PER_CONVERSATION_BURST` to the real chat routes and events (M10c); a shared DTO character-count helper based on Unicode code points (a prerequisite at the start of M9, then used by every DTO); the `npm audit` advisories in the scaffold dependencies (a dependency review before release, M14); the first CI run on GitHub, which stays open (the Mailpit SMTP test skips itself there).
 
 **Authentication and authorization**
 - **Check order with user-keyed rate limits.** The rate limiter has two phases. Keys that exist before authentication (`ip`, `email`) are counted by the first global guard, so a flood is still a 429 before any token is verified. Keys that need the user (`user`, `user + conversation`) can only be counted after authentication, so the order is `429 (ip/email) → 401 → 403 ACCOUNT_SUSPENDED → 429 (user/conversation) → role and course guards → 400 → 409`. This is Decision 167's follow-up (the gap tracked since M6) and is a clarification of the literal "429 first" wording of Decision 140 for the user-keyed classes.
@@ -172,8 +177,8 @@ specified and were decided by the implementer. They are **not yet approved**.
 - **Wording and pages**: English text; the links go to the frontend pages `/verify-email?token=…`, `/reset-password?token=…`, `/login` and `/forgot-password` under `FRONTEND_ORIGIN`. The sender defaults to `Nelio <no-reply@nelio.local>` outside production. Subjects: "Confirm your email address for Nelio", "Reset your Nelio password", "You already have a Nelio account".
 - **Delivery contract**: `MailService` never throws; each method resolves `true` or `false`. A recipient that is not a single plain address is refused (header injection). The whole send has a 15 s deadline on top of the transport's 10 s timeouts. The log names the template and the SMTP error code only, never the address, the link or the token.
 - **Environment variables**: `SMTP_HOST` (default `127.0.0.1` = Mailpit; required in production), `SMTP_PORT` (default 1025), `SMTP_SECURE` (default false), `SMTP_USER` and `SMTP_PASSWORD` (both or neither), `MAIL_FROM` (required in production). In production STARTTLS is required unless `SMTP_SECURE=true`. The numeric loopback address is the default because resolving `localhost` delayed the first connection by about 5 seconds.
-- **Token validity in the email** comes from the caller (`validForHours`); the Auth module must pass 24 for verification and 1 for password reset (architecture section 11). `TIME_LIMITS.EMAIL_TOKEN_TTL_MS` currently holds a single value (1 hour), which does not match the 24-hour verification token; M11a reconciles it.
+- **Token validity in the email — UNRESOLVED (kept open by the owner on 2026-10-26).** The email takes the validity from the caller (`validForHours`); the architecture says 24 hours for verification and 1 hour for password reset (section 11), but `TIME_LIMITS.EMAIL_TOKEN_TTL_MS` holds a single value (1 hour) that does not match the 24-hour verification token. Nothing is changed now; M11a reconciles the constant, the architecture text and the email, and decides which value is the requirement.
 
 ## Approval and changes
 
-All values in sections 1–9 were approved by the owner as a set on 2026-10-25 and are used as written. Section 10 was approved on 2026-10-25 after review (Decisions 166 and 167). Section 11 (M7) was approved on 2026-10-26 after review. **Section 12 (M8) is awaiting review.** To change one later: edit the constant, update this file, and add a migration if it is a *SQL CHECK*; record it in `decision.log.md` if it affects the schema or the API contract.
+All values in sections 1–9 were approved by the owner as a set on 2026-10-25 and are used as written. Section 10 was approved on 2026-10-25 after review (Decisions 166 and 167). Section 11 (M7) was approved on 2026-10-26 after review. Section 12 (M8) was approved on 2026-10-26 after review, except the email token lifetime, which stays unresolved until M11a. To change one later: edit the constant, update this file, and add a migration if it is a *SQL CHECK*; record it in `decision.log.md` if it affects the schema or the API contract.

@@ -84,6 +84,7 @@
   - [ ] No Prisma calls in gateways or controllers
   - [ ] Every new route is secure by default: a public route carries `@Public()` and a route without it needs a token; the OpenAPI document shows the security and the error responses of each operation
   - [ ] Every WebSocket gateway binds `@UseFilters(AllExceptionsFilter)` (Nest does not apply the global filter to gateways)
+  - [ ] Every request-DTO string that has a `TEXT_LIMITS` entry is validated with the shared code-point length helper, never with `.length` / `@Length` on UTF-16 units (a 1-character emoji has `.length` 2 but one PostgreSQL character)
   - [ ] Cross-module writes go through the owner's service (single Progress exception)
   - [ ] Every request DTO field has a validator decorator
   - [ ] Progress reads are one SQL statement
@@ -395,7 +396,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Status (2026-10-26):** implemented in `apps/backend/src/common/{guards,access,decorators}` (`TokenVerifier`, `Authenticator`, `JwtAuthGuard`, `RolesGuard`, `CourseRoleGuard`, `UserRateLimitGuard`, `RateLimiter`, `CourseAccessService`, `@Public/@OptionalAuth/@Roles/@CourseRole/@CurrentUser`, `AuthCoreModule`), `src/infrastructure/realtime` (Socket.IO gateway, handshake, registry, `RealtimeService`, configured adapter) and `src/infrastructure/mail` (`MailService`, templates, nodemailer transport), with the SMTP settings in the validated configuration. The global guards are registered in the order of the check list (`GLOBAL_PROVIDERS`). The OpenAPI document now derives each operation's security and its 400/401/403/429/500/503 responses from the guard decorators.
 - Tests: `test/common/token-verifier.spec.ts` (41), `course-access.spec.ts` (the 108-case grid), `rate-limiter.spec.ts`; `test/infrastructure/mail.spec.ts`; `test/app.e2e-spec.ts` (57: check order, guard order, Per-conversation burst, mail failure, OpenAPI security); `test/integration/auth-guards`, `course-access`, `realtime` (27, real Socket.IO client) and `mail-smtp` (real SMTP against Mailpit; skips itself when Mailpit is not running). Mutation checks on 14 security-relevant lines (algorithm pinning, expiry, suspension, `tokens_valid_after`, visibility rules, guard order, user-keyed limits, the Origin check, `disconnectUser`, mail errors) were all caught by tests.
 - **The M6 gaps are closed:** Per-conversation burst now limits (the "KNOWN GAP" test was replaced by tests that the 31st request is 429, and that REST and Socket.IO share one budget); `ValidationPipe` is verified on gateway payloads; the JWT guard runs after the rate limiter (test fails if the order changes).
-- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 12 (**pending owner review**). In particular the user-keyed 429 comes after 401 (it cannot come before), and two readings of Decisions 119/121 in the visibility grid.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 12 (**approved by the owner on 2026-10-26**, except the email token lifetime, which stays unresolved until M11a). In particular the user-keyed 429 comes after 401 (it cannot come before), and two readings of Decisions 119/121 in the visibility grid.
 - Found while testing: Nest does not apply the global exception filter to gateways (each gateway must bind it); connecting to SMTP by the name `localhost` stalls the first connection by about 5 s, so the development default is `127.0.0.1`.
 
 ---
@@ -403,6 +404,9 @@ Use real parallel connections and a helper that holds a transaction open while a
 ## M9 — Layer 0 modules
 
 **Requires:** M8 · **Unblocks:** M10. All five must be complete before M10; none may import another domain.
+
+### Shared prerequisite (first, before any DTO)
+- [ ] **Code-point length helper (approved 2026-10-26):** a shared validator/decorator in `common` that counts a string's length in Unicode code points (`[...value].length` semantics, so an emoji or other astral character counts as 1, like PostgreSQL's `char_length`) and takes its bounds from `TEXT_LIMITS`; used for every request-DTO string that has a limit. It exists to stop the mismatch between PostgreSQL character limits and JavaScript `.length` (UTF-16 units), where a single emoji could pass a 2-character DTO check and then hit the database CHECK as a 500. Tests: bounds on both sides with ASCII, Armenian, emoji (astral) and combining characters; a DTO accepted by the helper is never rejected by the matching SQL CHECK (property-style check against the real database for every limited column)
 
 ### M9a — Files
 - [ ] Add MinIO to Docker Compose and its `MINIO_ROOT_*` variables to `.env.example`
@@ -481,6 +485,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M10 · **Unblocks:** M12. Order: Auth → Courses → Enrollments.
 
 ### M11a — Auth (in this order)
+- [ ] **Reconcile the email-token lifetimes first (open since M8, owner decision 2026-10-26):** architecture section 11 says verification 24 h and reset 1 h, but `TIME_LIMITS.EMAIL_TOKEN_TTL_MS` is one value (1 h). Decide the requirement, then make the constant(s), the architecture text, the token expiry and the `validForHours` passed to `MailService` agree, with a test that the email and the stored `expires_at` state the same lifetime
 1. [ ] `TokenIssuer`, refresh families, `revokeAllSessions(tx, userId)` (revokes tokens + `UsersService.setTokensValidAfter` in the same transaction)
 2. [ ] Register, verify, resend, forgot, reset (always-202, account-state table, newest-token cooldown, single-use conditional update)
 3. [ ] Login, refresh, logout, logout-all, change-password (cookie `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`; Origin check on refresh/logout)
@@ -573,6 +578,8 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M13
 
 - [ ] **Select the production hosting provider and verify its compatibility (deployment requirement, Decision 165).** The provider is **not selected** and nothing has been verified. From the provider's official documentation confirm: PostgreSQL 18 or later is offered (`uuidv7()` is core in 18, no extension needed); `pg_trgm` is allowed; advisory locks and `set_config(..., true)` behave correctly behind its connection pooler; backups and a tested restore are possible; S3-compatible private/public bucket policies are possible. Do not deploy to production before this is done.
+- [ ] **Dependency review (deferred from M8, owner decision 2026-10-26):** `npm audit --omit=dev` reported 5 advisories (1 moderate, 4 high) in the scaffold dependencies `@nestjs/core`, `@nestjs/platform-express`, `body-parser`, `multer` and `fast-uri`; none comes from the packages added in M6-M8. Review each advisory against how the application uses it, update to tested versions in a separate change (not mixed with feature work), and re-run the full suite
+- [ ] **First CI run on GitHub (open since M3):** the workflow has never run there. Check the PostgreSQL 18.6 service, the `openapi:export` drift step and the full test layers; note that `mail-smtp.integration-spec.ts` skips itself where Mailpit is not running
 - [ ] **Revisit the database pool size** (`TRANSACTION_LIMITS.POOL_MAX`, default 10) against the selected provider's connection limits and pooler (approved 2026-10-25)
 - [ ] Same-site deployment (shared registrable domain or reverse proxy); trusted-proxy config (`TRUST_PROXY` hop count; the rate limiter sees the proxy's IP if it is wrong); `Secure` cookies; validated production environment
 - [ ] S3 bucket policy: private attachments, public avatars/covers
