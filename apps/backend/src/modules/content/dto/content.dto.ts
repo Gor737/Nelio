@@ -76,7 +76,8 @@ export class CreateBlockDto {
   type!: BlockTypeName;
 
   @ApiPropertyOptional({
-    description: 'TEXT only: Markdown source, stored as text.',
+    description:
+      'TEXT only: Markdown source. The server stores it exactly as written and never sanitizes or renders it; the frontend must render it safely (raw HTML disabled or sanitized, no javascript: links).',
     minLength: TEXT_LIMITS.TEXT_BLOCK_BODY.min,
     maxLength: TEXT_LIMITS.TEXT_BLOCK_BODY.max,
   })
@@ -185,7 +186,12 @@ export class ContentBlockDto {
   @ApiProperty({ enum: BLOCK_TYPES })
   type!: BlockTypeName;
 
-  @ApiProperty({ nullable: true, type: String })
+  @ApiProperty({
+    nullable: true,
+    type: String,
+    description:
+      'Markdown source of a TEXT block, exactly as the teacher wrote it. It is untrusted: render it safely (raw HTML disabled or sanitized, no javascript: links).',
+  })
   textBody!: string | null;
 
   @ApiProperty({ type: BlockVideoDto, nullable: true })

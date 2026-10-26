@@ -774,7 +774,7 @@ Course-channel membership (Owner, Assistants, `ACTIVE` students) is stored in `C
 | Output | Allowlist response DTOs; email only in `/me` and Admin endpoints; never `password_hash`, `token_hash`, deleted-message text, snapshots |
 | Transport | HTTPS, `Secure` cookies, Helmet, CORS restricted to the frontend origin with credentials, trusted-proxy config, `Origin` checks on refresh, logout, and socket handshake |
 | CSRF | Refresh cookie is `SameSite=Lax` and scoped to `/api/v1/auth`; all tokens consumed by POST; Origin check as defense in depth |
-| XSS | Tokens never in `localStorage`; Markdown stored as text and rendered safely by the frontend; videos embedded from server-built URLs for YouTube/Vimeo only |
+| XSS | Tokens never in `localStorage`; Markdown (lesson text blocks) is stored exactly as written and never sanitized or rendered by the server, so the frontend must render it safely (raw HTML disabled or sanitized, no `javascript:` links, no inline event handlers); videos embedded from server-built URLs for YouTube/Vimeo only |
 | Rate limiting | Four classes; per-IP and per-email keys on sensitive endpoints; no account lockout |
 | Suspension | Guard check on every request, refresh tokens revoked in the same transaction, sockets disconnected after commit |
 | Abuse controls | Blocks (chat only; Admins exempt), reports with evidence snapshot, Admin moderation; user search limited and safe-fields-only (slow scraping is an accepted risk) |

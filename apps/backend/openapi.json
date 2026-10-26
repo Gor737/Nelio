@@ -6798,7 +6798,8 @@
           },
           "textBody": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Markdown source of a TEXT block, exactly as the teacher wrote it. It is untrusted: render it safely (raw HTML disabled or sanitized, no javascript: links)."
           },
           "video": {
             "nullable": true,
@@ -7110,7 +7111,7 @@
           },
           "textBody": {
             "type": "string",
-            "description": "TEXT only: Markdown source, stored as text.",
+            "description": "TEXT only: Markdown source. The server stores it exactly as written and never sanitizes or renders it; the frontend must render it safely (raw HTML disabled or sanitized, no javascript: links).",
             "minLength": 1,
             "maxLength": 20000
           },

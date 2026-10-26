@@ -458,7 +458,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 ### M10b — Content
 - [x] Sections, lessons, blocks CRUD; shared full-list reorder helper (ID-list validation, parent lock, `ORDER_MISMATCH`); lesson lifecycle and `move`; `visibleLessonWhere`
 - [x] Outline vs public syllabus; student vs teacher lesson DTOs; signed download URLs re-checked each request
-- [x] Video URL parser (YouTube/Vimeo only; provider + id stored; embed URL built server-side); Markdown stored as text with length limit
+- [x] Video URL parser (YouTube/Vimeo only; provider + id stored; embed URL built server-side); Markdown stored as text with length limit (no server-side sanitization: the frontend renders it safely, see the frontend contract notes)
 - [x] Lesson status changes call `recheckCourse` inside Course-X
 - [x] **Permanent lesson deletion rule (approved 2026-10-26):** a lesson may be hard-deleted only if it was never published (`first_published_at IS NULL`) **and** has no completions; "not currently published" is not enough (an `ARCHIVED` lesson that was published once is not deletable). Test both conditions, plus an `ARCHIVED` lesson that was never published (deletable)
 - [x] **Provider-specific video id validation (approved 2026-10-26, not implemented before M10b):** the id is checked against the provider's own pattern (YouTube and Vimeo) in the Content module, in addition to the SQL length check (1-64); the embed URL is built server-side from provider + id only. Tests: hostile ids (quotes, slashes, `javascript:`, whitespace, over-long) rejected for both providers
@@ -487,9 +487,9 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Status (2026-10-26):** implemented and verified (all three modules green; dependency checker shows no import between Users, Content and Chat). Code: `src/modules/{users,content,chat}`, plus in `common` `@CurrentCourseAccess()` and `assertCourseMutable`, and in `infrastructure/events` four conversation event names.
 - Tests: Users `users.integration-spec.ts` (30); Content `content.integration-spec.ts` (45) and `test/modules/content/video-url.spec.ts` (76, unit); Chat `chat-conversations.integration-spec.ts` (28), `chat-messages.integration-spec.ts` (30) and `chat-realtime.integration-spec.ts` (23, real Socket.IO clients). Mutation checks (about 80 mutations of locks, state checks, visibility, idempotency, block rules, delivery filters, typing and presence) are all caught by the tests.
 - Found while testing: background delivery after a test ended deadlocked with the next test's `TRUNCATE`; `ChatDeliveryService.idle()` (also awaited at shutdown) fixes it and the chat specs wait on it after every test.
-- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 14 (**PROPOSED, not yet reviewed**; the first block of it lists the three points that go slightly beyond a pure reading: the audit action `TEACHER_REAPPLIED`, four new event names, and `409 RESOURCE_CONFLICT` for a full group).
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 14 (reviewed by the owner on 2026-10-26: `TEACHER_REAPPLIED`, the four conversation events, `409 RESOURCE_CONFLICT` for a full group, deleting the last block of a published lesson, unsanitized Markdown storage and the caller in their own search are **APPROVED**; the private Vimeo hash is **UNRESOLVED**; the rest is still proposed).
 - Safety-net jobs are callable methods only (`CourseChannelService.reconcileAll`); their schedules are M13, as is wiring `CourseChannelService` into publish, enrollment and team transitions (M11).
-- Open: the same items as M9 (MinIO development store, the first CI run, `npm audit`, the email token lifetime in M11a).
+- Open: the same items as M9 (MinIO development store, the first CI run, `npm audit`, the email token lifetime in M11a), and the **private Vimeo hash** (the parser accepts `vimeo.com/<id>/<hash>` and drops the hash; the owner kept this unresolved, so private Vimeo videos are unsupported until it is decided).
 
 ---
 
@@ -598,7 +598,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [ ] S3 bucket policy: private attachments, public avatars/covers
 - [ ] Database backups **and a tested restore** (deleted-message text persists in backups, decision 86)
 - [ ] Runbook: sweeper logs signal a bug; JWT secret rotation logs everyone out; how to create an Admin
-- [ ] Frontend contract notes: share one in-flight refresh; refresh before socket reconnect; render private pages client-side; sort messages by `seq` and detect gaps; render Markdown safely; send `clientId` as a UUID from `crypto.randomUUID()` and reuse it on every retry of the same message; send `enrollmentPolicy` explicitly when creating a course; treat 503 `SERVICE_UNAVAILABLE` as "try again later"; 401 vs 403 handling (`INVALID_CURRENT_PASSWORD` is 403 by design)
+- [ ] Frontend contract notes: share one in-flight refresh; refresh before socket reconnect; render private pages client-side; sort messages by `seq` and detect gaps; render Markdown safely (the server stores it unsanitized; raw HTML disabled or sanitized, no `javascript:` links); send `clientId` as a UUID from `crypto.randomUUID()` and reuse it on every retry of the same message; send `enrollmentPolicy` explicitly when creating a course; treat 503 `SERVICE_UNAVAILABLE` as "try again later"; 401 vs 403 handling (`INVALID_CURRENT_PASSWORD` is 403 by design)
 - [ ] OpenAPI document handed to the frontend
 
 ---
