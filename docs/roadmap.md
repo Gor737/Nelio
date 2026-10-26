@@ -406,37 +406,43 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M8 · **Unblocks:** M10. All five must be complete before M10; none may import another domain.
 
 ### Shared prerequisite (first, before any DTO)
-- [ ] **Code-point length helper (approved 2026-10-26):** a shared validator/decorator in `common` that counts a string's length in Unicode code points (`[...value].length` semantics, so an emoji or other astral character counts as 1, like PostgreSQL's `char_length`) and takes its bounds from `TEXT_LIMITS`; used for every request-DTO string that has a limit. It exists to stop the mismatch between PostgreSQL character limits and JavaScript `.length` (UTF-16 units), where a single emoji could pass a 2-character DTO check and then hit the database CHECK as a 500. Tests: bounds on both sides with ASCII, Armenian, emoji (astral) and combining characters; a DTO accepted by the helper is never rejected by the matching SQL CHECK (property-style check against the real database for every limited column)
+- [x] **Code-point length helper (approved 2026-10-26):** a shared validator/decorator in `common` that counts a string's length in Unicode code points (`[...value].length` semantics, so an emoji or other astral character counts as 1, like PostgreSQL's `char_length`) and takes its bounds from `TEXT_LIMITS`; used for every request-DTO string that has a limit. It exists to stop the mismatch between PostgreSQL character limits and JavaScript `.length` (UTF-16 units), where a single emoji could pass a 2-character DTO check and then hit the database CHECK as a 500. Tests: bounds on both sides with ASCII, Armenian, emoji (astral) and combining characters; a DTO accepted by the helper is never rejected by the matching SQL CHECK (property-style check against the real database for every limited column)
 
 ### M9a — Files
-- [ ] Add MinIO to Docker Compose and its `MINIO_ROOT_*` variables to `.env.example`
-- [ ] `StorageDriver` interface + S3/MinIO implementation (Files module only)
-- [ ] `POST /files` (multipart, limits per `kind`, real file-type check, generated storage keys); `DELETE /files/:id` (own, unattached)
-- [ ] `FILE_TOO_LARGE` (413) and `FILE_TYPE_NOT_ALLOWED` (415) are produced on upload routes only (the global filter maps a JSON-body 413/415 to 400, Decision 167); test both on `POST /files`
-- [ ] Signed URLs for attachments; public URLs for avatars/covers
-- [ ] Orphan cleanup job (older than 24 h, unreferenced across all referencing tables)
-- [ ] Order: delete DB row then storage object; upload storage then metadata
-- [ ] Tests: 413/415 codes; lying extension rejected; hostile filename can't affect key; non-Teachers can't upload covers/attachments; `FILE_IN_USE`; cleanup skips referenced/recent files and loses cleanly to a concurrent attach
+- [ ] Add MinIO to Docker Compose and its `MINIO_ROOT_*` variables to `.env.example` — **BLOCKED, owner decision needed** (the official `minio/minio` images can no longer be pulled; see proposed-defaults section 13). The `S3_*` variables are documented in `.env.example`; no compose service was added
+- [x] `StorageDriver` interface + S3/MinIO implementation (Files module only)
+- [x] `POST /files` (multipart, limits per `kind`, real file-type check, generated storage keys); `DELETE /files/:id` (own, unattached)
+- [x] `FILE_TOO_LARGE` (413) and `FILE_TYPE_NOT_ALLOWED` (415) are produced on upload routes only (the global filter maps a JSON-body 413/415 to 400, Decision 167); test both on `POST /files`
+- [x] Signed URLs for attachments; public URLs for avatars/covers
+- [x] Orphan cleanup job (older than 24 h, unreferenced across all referencing tables)
+- [x] Order: delete DB row then storage object; upload storage then metadata
+- [x] Tests: 413/415 codes; lying extension rejected; hostile filename can't affect key; non-Teachers can't upload covers/attachments; `FILE_IN_USE`; cleanup skips referenced/recent files and loses cleanly to a concurrent attach
 
 ### M9b — Catalog
-- [ ] `GET /categories`, `GET /tags` (autocomplete, max 20); `setCourseTags(tx, …)` with normalization, tag cap, length limits
-- [ ] Tests: normalization; cap; concurrent identical new tags don't fail
+- [x] `GET /categories`, `GET /tags` (autocomplete, max 20); `setCourseTags(tx, …)` with normalization, tag cap, length limits
+- [x] Tests: normalization; cap; concurrent identical new tags don't fail
 
 ### M9c — Moderation
-- [ ] `BlockService` (`isBlockedEitherWay`, `assertCanAdd`); block endpoints; `CANNOT_BLOCK_SELF`, `CANNOT_BLOCK_ADMIN`
-- [ ] Report creation (message and user), snapshot taken in the same statement: `message_snapshot` is the message body as **text** (1-2000 characters, `reports_message_snapshot_length`), required for message reports and absent for user reports (Decision 77, owner decision 2026-10-26)
-- [ ] Tests: idempotent block; no "who blocked me" exposure; snapshot survives later edit; non-members 404; self-report 400; duplicate open report 409; reported message can't be hard-deleted
+- [x] `BlockService` (`isBlockedEitherWay`, `assertCanAdd`); block endpoints; `CANNOT_BLOCK_SELF`, `CANNOT_BLOCK_ADMIN`
+- [x] Report creation (message and user), snapshot taken in the same statement: `message_snapshot` is the message body as **text** (1-2000 characters, `reports_message_snapshot_length`), required for message reports and absent for user reports (Decision 77, owner decision 2026-10-26)
+- [x] Tests: idempotent block; no "who blocked me" exposure; snapshot survives later edit; non-members 404; self-report 400; duplicate open report 409; reported message can't be hard-deleted
 
 ### M9d — Progress
-- [ ] `CompletionService` (`markComplete`, `recheckEnrollment(tx)`, `recheckCourse(tx)`, nightly all-courses recheck); `ProgressQueries` (single statement); `PUT …/lessons/:lessonId/completion`
-- [ ] Locks: Course-S, then Enrollment row `FOR SHARE`
-- [ ] Tests: idempotent/parallel marking; requires `ACTIVE` enrollment and published same-course lesson; ≥1 published lesson guard; `completed_at` permanent and separate from `percent`; `courseCompleted` from conditional-update row count; **Bug 1 scenario**; removed-student race; progress summary is one query; recheck only completes `ACTIVE` incomplete enrollments
+- [x] `CompletionService` (`markComplete`, `recheckEnrollment(tx)`, `recheckCourse(tx)`, nightly all-courses recheck); `ProgressQueries` (single statement); `PUT …/lessons/:lessonId/completion`
+- [x] Locks: Course-S, then Enrollment row `FOR SHARE` — **implemented as `FOR NO KEY UPDATE` on the Enrollment row** (`FOR SHARE` deadlocks and can miss a completion when one student marks twice at once; owner decision pending, proposed-defaults section 13)
+- [x] Tests: idempotent/parallel marking; requires `ACTIVE` enrollment and published same-course lesson; ≥1 published lesson guard; `completed_at` permanent and separate from `percent`; `courseCompleted` from conditional-update row count; **Bug 1 scenario**; removed-student race; progress summary is one query; recheck only completes `ACTIVE` incomplete enrollments
 
 ### M9e — Notifications
-- [ ] Event listener, chunked bulk insert (~500), cursor list, unread count, idempotent read, read-all, Realtime push, 90-day read-notification retention job; exports nothing
-- [ ] Tests: each of 12 types produces right row/recipients/`data`; foreign notification read → 404; no notifications for chat messages; push failure never fails anything; unread count uses partial index; retention deletes only old read rows
+- [x] Event listener, chunked bulk insert (~500), cursor list, unread count, idempotent read, read-all, Realtime push, 90-day read-notification retention job; exports nothing
+- [x] Tests: each of 12 types produces right row/recipients/`data`; foreign notification read → 404; no notifications for chat messages; push failure never fails anything; unread count uses partial index; retention deletes only old read rows
 
 **Exit:** all five green; dependency checker shows no cross-domain imports among them.
+
+**Status (2026-10-26):** implemented and verified, **one item open (the MinIO Compose service)**. Code: `common/decorators/text-length.decorator.ts` (+ `common/dto/page-query.dto.ts`), and the five modules under `src/modules/{files,catalog,moderation,progress,notifications}`. The cron schedules for the three safety-net jobs (orphan files, completion recheck, notification retention) are M13; in M9 they are callable, tested service methods.
+- Tests: `test/common/text-length.spec.ts` (30), `test/integration/text-limits-consistency` (8, real database, 18 columns x 7 alphabets); Files `file-utils.spec.ts` (48), `files.integration-spec.ts` (43), `files-s3.integration-spec.ts` (12, real S3-compatible store, skips itself without one); Catalog `tag-normalizer.spec.ts` (36), `catalog.integration-spec.ts` (23); Moderation `moderation.integration-spec.ts` (33); Progress `progress.integration-spec.ts` (23); Notifications `notifications.integration-spec.ts` (35, with a real Socket.IO client). Mutation checks: Catalog (insert order), Progress (5: Course-S lock, Enrollment lock mode, ACTIVE filter, published-lesson guard, conditional update) and Notifications (9) were all caught.
+- Found while testing: the transaction catalog's `FOR SHARE` on the Enrollment row is not safe for two marks by the same student (lock-upgrade deadlock, and a missed completion); the implementation uses `FOR NO KEY UPDATE`. **`docs/architecture.md` is not yet updated: owner decision pending (proposed-defaults section 13).**
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 13 (**proposed, not yet reviewed by the owner**).
+- Open: MinIO distribution (above); the three scheduled jobs (M13); the first CI run on GitHub; `npm audit` advisories (M14); email token lifetime (M11a); `PER_CONVERSATION_BURST` on real chat (M10c).
 
 ---
 

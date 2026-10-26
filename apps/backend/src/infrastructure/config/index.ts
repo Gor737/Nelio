@@ -8,5 +8,6 @@ export {
   type AppConfig,
   type LogLevel,
   type MailConfig,
+  type StorageConfig,
   type NodeEnv,
 } from './app-config.js';

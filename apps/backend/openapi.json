@@ -54,6 +54,1433 @@
         ],
         "security": []
       }
+    },
+    "/api/v1/files": {
+      "post": {
+        "description": "Multipart upload through the API server. Limits per kind: AVATAR 2 MB (JPEG, PNG, WebP), COURSE_COVER 5 MB (JPEG, PNG, WebP), LESSON_ATTACHMENT 25 MB (PDF, JPEG, PNG, WebP, ZIP, plain text). The type is detected from the content; executables are refused whatever the name says. AVATAR for any user; COURSE_COVER and LESSON_ATTACHMENT for an ACTIVE Teacher.",
+        "operationId": "FilesController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFileBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileAssetDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE: over the limit of the kind (or over 25 MB).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED: the real type of the file is not allowed for this kind.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Upload a file",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/api/v1/files/{id}": {
+      "delete": {
+        "description": "A file that is somebody else`s, or does not exist, is 404. A file still used as an avatar, cover or attachment is 409 FILE_IN_USE.",
+        "operationId": "FilesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "FILE_IN_USE: the file is an avatar, a cover or an attachment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete one of your own files that nothing uses",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "description": "Public. Sorted by name; not paginated (the list is managed by Admins and small).",
+        "operationId": "CatalogController_categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryDto"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List all categories",
+        "tags": [
+          "Catalog"
+        ],
+        "security": []
+      }
+    },
+    "/api/v1/tags": {
+      "get": {
+        "description": "Public. Tags that start with `q` (all tags when `q` is omitted), the most used first, at most 20 (`limit` can lower it).",
+        "operationId": "CatalogController_tags",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Start of a tag name. Case, accents composition and extra spaces do not matter; `%` and `_` are literal characters.",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 30,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 20,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Tag autocomplete",
+        "tags": [
+          "Catalog"
+        ],
+        "security": []
+      }
+    },
+    "/api/v1/courses/{courseId}/lessons/{lessonId}/completion": {
+      "put": {
+        "description": "For an ACTIVE student of the course. Idempotent: repeating it changes nothing and returns the same `completedAt`. There is no way to un-complete a lesson. When this request finishes the last published lesson, the course is completed permanently and `courseCompleted` is true in this response only.",
+        "operationId": "ProgressController_markComplete",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lessonId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonCompletionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an ACTIVE student (for example removed a moment ago).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The lesson does not exist in this course or is not published.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Mark a lesson complete",
+        "tags": [
+          "Progress"
+        ]
+      }
+    },
+    "/api/v1/me/blocks": {
+      "get": {
+        "description": "Only your own blocks, newest first. There is no way to see who has blocked you.",
+        "operationId": "BlocksController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedUsersPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "The people you have blocked",
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/api/v1/me/blocks/{userId}": {
+      "put": {
+        "description": "Idempotent. A block stops new direct messages and adding you to new groups between the two of you; it does not affect courses, enrollment or old history. An Admin cannot be blocked.",
+        "operationId": "BlocksController_block",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Blocked (or already blocked)."
+          },
+          "400": {
+            "description": "CANNOT_BLOCK_SELF.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CANNOT_BLOCK_ADMIN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Block a user",
+        "tags": [
+          "Moderation"
+        ]
+      },
+      "delete": {
+        "description": "Idempotent.",
+        "operationId": "BlocksController_unblock",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Unblocked (or was not blocked)."
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Unblock a user",
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/report": {
+      "post": {
+        "description": "One open report per reporter and user; a new one is possible once the old one is handled.",
+        "operationId": "ReportsController_reportUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportReceiptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Reporting yourself, or an invalid body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "RESOURCE_CONFLICT: you already have an open report on this user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Report a user",
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversationId}/messages/{messageId}/report": {
+      "post": {
+        "description": "You must be an active member of the conversation. The text of the message is saved with the report as it is now, so editing or deleting it later does not change the evidence. Not found (404) for a message you cannot see.",
+        "operationId": "ReportsController_reportMessage",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportReceiptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Your own message, or an invalid body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "RESOURCE_CONFLICT: you already have an open report on this message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Report a message",
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/api/v1/me/notifications": {
+      "get": {
+        "description": "Newest first. Cursor pagination: pass `nextCursor` of the previous page as `cursor`. `unread=true` lists unread ones only.",
+        "operationId": "NotificationsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "unread",
+            "required": false,
+            "in": "query",
+            "description": "true: only unread notifications.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationsPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "My notifications",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/me/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Number of unread notifications (the badge)",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/me/notifications/read-all": {
+      "put": {
+        "description": "Idempotent.",
+        "operationId": "NotificationsController_readAll",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Done (also when nothing was unread)."
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Mark all my notifications as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/me/notifications/{id}/read": {
+      "put": {
+        "description": "Idempotent: repeating it succeeds and keeps the first read time. Another user`s notification, or one that does not exist, is 404.",
+        "operationId": "NotificationsController_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Read (or already read)."
+          },
+          "400": {
+            "description": "VALIDATION_FAILED: unknown field, wrong type or length, or a malformed id; see `errors` for the fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: the access token is missing, invalid, expired or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_SUSPENDED when the account is suspended; otherwise FORBIDDEN, TEACHER_NOT_APPROVED or COURSE_ADMIN_LOCKED when the caller lacks the role or the course is locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TOO_MANY_REQUESTS: rate limit exceeded; see the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: a dependency is temporarily unavailable; safe to retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Mark one notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
     }
   },
   "info": {
@@ -189,6 +1616,381 @@
           "statusCode",
           "code",
           "message"
+        ]
+      },
+      "UploadFileBodyDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "AVATAR",
+              "COURSE_COVER",
+              "LESSON_ATTACHMENT"
+            ],
+            "description": "What the file is for. AVATAR: any logged-in user. COURSE_COVER and LESSON_ATTACHMENT: an ACTIVE Teacher (otherwise 403 TEACHER_NOT_APPROVED)."
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "The file. The type is detected from its content, never from its name or Content-Type."
+          }
+        },
+        "required": [
+          "kind",
+          "file"
+        ]
+      },
+      "FileAssetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "AVATAR",
+              "COURSE_COVER",
+              "LESSON_ATTACHMENT"
+            ]
+          },
+          "originalName": {
+            "type": "string",
+            "example": "syllabus.pdf",
+            "description": "The uploaded name, sanitized; for display only."
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf",
+            "description": "The DETECTED type, not the one the client claimed."
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 52311,
+            "description": "Size in bytes."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Public URL of an AVATAR or COURSE_COVER. Null for a LESSON_ATTACHMENT (served through signed URLs only)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "originalName",
+          "mimeType",
+          "sizeBytes",
+          "url",
+          "createdAt"
+        ]
+      },
+      "CategoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Programming"
+          },
+          "slug": {
+            "type": "string",
+            "example": "programming"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ]
+      },
+      "TagDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "web development",
+            "description": "Normalized: lowercase, single spaces."
+          },
+          "slug": {
+            "type": "string",
+            "example": "web-development",
+            "description": "The name with hyphens instead of spaces; unique."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ]
+      },
+      "ProgressSummaryDto": {
+        "type": "object",
+        "properties": {
+          "completedLessons": {
+            "type": "number",
+            "description": "Published lessons of the course that this student has completed."
+          },
+          "totalLessons": {
+            "type": "number",
+            "description": "Lessons published right now."
+          },
+          "percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Live whole percent, rounded down (0 with no published lesson). It is independent of course completion: a completed student can show less than 100 after new lessons are published."
+          }
+        },
+        "required": [
+          "completedLessons",
+          "totalLessons",
+          "percent"
+        ]
+      },
+      "LessonCompletionDto": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "completedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the lesson was first marked complete; unchanged by repeats."
+          },
+          "courseCompleted": {
+            "type": "boolean",
+            "description": "True only in the response to the request that completed the whole course (the permanent completion snapshot was written by this request). False on repeats and when the course is not finished."
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ProgressSummaryDto"
+          }
+        },
+        "required": [
+          "lessonId",
+          "completedAt",
+          "courseCompleted",
+          "progress"
+        ]
+      },
+      "BlockedUserDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "blockedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "fullName",
+          "blockedAt"
+        ]
+      },
+      "BlockedUsersPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlockedUserDto"
+            }
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total"
+        ]
+      },
+      "CreateReportDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "SPAM",
+              "HARASSMENT",
+              "INAPPROPRIATE",
+              "OTHER"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ReportReceiptDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "createdAt"
+        ]
+      },
+      "NotificationActorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName"
+        ]
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TEACHER_APPLICATION_RECEIVED",
+              "TEACHER_APPLICATION_APPROVED",
+              "TEACHER_APPLICATION_REJECTED",
+              "TEACHER_ROLE_REVOKED",
+              "ENROLLMENT_REQUESTED",
+              "ENROLLMENT_APPROVED",
+              "ENROLLMENT_REJECTED",
+              "REMOVED_FROM_COURSE",
+              "INVITATION_RECEIVED",
+              "LESSON_PUBLISHED",
+              "OWNERSHIP_TRANSFERRED",
+              "COURSE_ADMIN_LOCKED"
+            ]
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actor": {
+            "nullable": true,
+            "description": "Who caused it; null for system events and when that account no longer exists.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationActorDto"
+              }
+            ]
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Display snapshot taken when the event happened (for example `courseTitle`, `lessonTitle`, `reason`, `reinstated`). Keys depend on `type`."
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "courseId",
+          "actor",
+          "data",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "NotificationsPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass it as `cursor` to get the next (older) page; null when there is no more."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "UnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "count"
         ]
       }
     }

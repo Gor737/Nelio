@@ -38,6 +38,15 @@ describe('configuration', () => {
         password: undefined,
         from: 'Nelio <no-reply@nelio.local>',
       },
+      storage: {
+        endpoint: 'http://127.0.0.1:9000', // MinIO
+        region: 'us-east-1',
+        bucket: 'nelio-files',
+        accessKeyId: undefined, // no credentials in the minimal environment: file storage is "not configured"
+        secretAccessKey: undefined,
+        forcePathStyle: true,
+        publicBaseUrl: 'http://127.0.0.1:9000/nelio-files',
+      },
     });
   });
 
@@ -104,6 +113,10 @@ describe('configuration', () => {
           FRONTEND_ORIGIN: 'https://app.example.com',
           SMTP_HOST: 'smtp.example.com',
           MAIL_FROM: 'no-reply@example.com',
+          S3_BUCKET: 'nelio-prod-files',
+          S3_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+          S3_SECRET_ACCESS_KEY: 'prod-secret-key-value',
+          S3_PUBLIC_BASE_URL: 'https://files.example.com',
           POSTGRES_USER: 'u',
           POSTGRES_PASSWORD: 'p',
         }),
@@ -142,6 +155,10 @@ describe('configuration', () => {
       FRONTEND_ORIGIN: 'https://app.example.com',
       SMTP_HOST: 'smtp.example.com',
       MAIL_FROM: 'Nelio <no-reply@example.com>',
+      S3_BUCKET: 'nelio-prod-files',
+      S3_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+      S3_SECRET_ACCESS_KEY: 'prod-secret-key-value',
+      S3_PUBLIC_BASE_URL: 'https://files.example.com',
     };
 
     it('requires FRONTEND_ORIGIN and turns Swagger off by default', () => {
@@ -218,6 +235,9 @@ describe('configuration', () => {
         'LOG_LEVEL must be one of debug, info, warn, error',
         'SMTP_HOST is required in production',
         'MAIL_FROM is required in production',
+        'S3_BUCKET is required in production',
+        'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required in production',
+        'S3_PUBLIC_BASE_URL is required in production',
       ]);
     });
   });
@@ -229,6 +249,10 @@ describe('configuration', () => {
           NODE_ENV: 'production',
           ...valid,
           FRONTEND_ORIGIN: 'https://app.example.com',
+          S3_BUCKET: 'nelio-prod-files',
+          S3_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+          S3_SECRET_ACCESS_KEY: 'prod-secret-key-value',
+          S3_PUBLIC_BASE_URL: 'https://files.example.com',
         }),
       ).toEqual([
         'SMTP_HOST is required in production',
@@ -314,6 +338,153 @@ describe('configuration', () => {
         SMTP_PASSWORD: 'super-secret-smtp-password',
       }).join(' ');
       expect(messages).not.toContain('super-secret-smtp-password');
+    });
+  });
+
+  describe('object storage (S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_FORCE_PATH_STYLE, S3_PUBLIC_BASE_URL)', () => {
+    it('outside production the defaults point at a local MinIO, and the credentials fall back to MINIO_ROOT_USER / MINIO_ROOT_PASSWORD', () => {
+      const cfg = loadConfig({
+        ...valid,
+        MINIO_ROOT_USER: 'minio-user',
+        MINIO_ROOT_PASSWORD: 'minio-password',
+      }).storage;
+      expect(cfg).toEqual({
+        endpoint: 'http://127.0.0.1:9000',
+        region: 'us-east-1',
+        bucket: 'nelio-files',
+        accessKeyId: 'minio-user',
+        secretAccessKey: 'minio-password',
+        forcePathStyle: true,
+        publicBaseUrl: 'http://127.0.0.1:9000/nelio-files',
+      });
+    });
+
+    it('explicit S3_* values win over the MinIO fallback, and the public URL follows a custom endpoint and bucket', () => {
+      const cfg = loadConfig({
+        ...valid,
+        MINIO_ROOT_USER: 'ignored',
+        MINIO_ROOT_PASSWORD: 'ignored',
+        S3_ENDPOINT: 'http://127.0.0.1:19000/',
+        S3_BUCKET: 'other-bucket',
+        S3_ACCESS_KEY_ID: 'explicit-id',
+        S3_SECRET_ACCESS_KEY: 'explicit-secret',
+      }).storage;
+      expect(cfg).toMatchObject({
+        endpoint: 'http://127.0.0.1:19000', // a trailing slash is removed
+        bucket: 'other-bucket',
+        accessKeyId: 'explicit-id',
+        secretAccessKey: 'explicit-secret',
+        publicBaseUrl: 'http://127.0.0.1:19000/other-bucket',
+      });
+    });
+
+    it('production requires the bucket, both credentials and the public base URL; the endpoint may be left out (AWS S3)', () => {
+      const base = {
+        NODE_ENV: 'production',
+        ...valid,
+        FRONTEND_ORIGIN: 'https://app.example.com',
+        SMTP_HOST: 'smtp.example.com',
+        MAIL_FROM: 'a@example.com',
+      };
+      expect(problemsOf(base)).toEqual([
+        'S3_BUCKET is required in production',
+        'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required in production',
+        'S3_PUBLIC_BASE_URL is required in production',
+      ]);
+      const cfg = loadConfig({
+        ...base,
+        S3_BUCKET: 'nelio-prod-files',
+        S3_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+        S3_SECRET_ACCESS_KEY: 'prod-secret-key-value',
+        S3_PUBLIC_BASE_URL: 'https://files.example.com/',
+      }).storage;
+      expect(cfg).toMatchObject({
+        endpoint: undefined,
+        forcePathStyle: false,
+        publicBaseUrl: 'https://files.example.com',
+      });
+    });
+
+    it('production never falls back to MINIO_ROOT_*', () => {
+      const problems = problemsOf({
+        NODE_ENV: 'production',
+        ...valid,
+        FRONTEND_ORIGIN: 'https://app.example.com',
+        SMTP_HOST: 's.example.com',
+        MAIL_FROM: 'a@example.com',
+        S3_BUCKET: 'nelio-prod-files',
+        S3_PUBLIC_BASE_URL: 'https://files.example.com',
+        MINIO_ROOT_USER: 'u',
+        MINIO_ROOT_PASSWORD: 'p',
+      });
+      expect(problems).toEqual([
+        'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required in production',
+      ]);
+    });
+
+    it('the two credentials go together outside production too; with neither, storage is simply not configured and the application still starts', () => {
+      expect(problemsOf({ ...valid, S3_ACCESS_KEY_ID: 'only-id' })).toEqual([
+        'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together or not at all',
+      ]);
+      expect(
+        problemsOf({ ...valid, S3_SECRET_ACCESS_KEY: 'only-secret' }),
+      ).toEqual([
+        'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together or not at all',
+      ]);
+      const none = loadConfig(valid).storage;
+      expect([none.accessKeyId, none.secretAccessKey]).toEqual([
+        undefined,
+        undefined,
+      ]);
+    });
+
+    it.each([
+      [
+        'S3_ENDPOINT',
+        'ftp://store.example.com',
+        'S3_ENDPOINT must be an http(s) URL',
+      ],
+      ['S3_ENDPOINT', 'not a url', 'S3_ENDPOINT must be an http(s) URL'],
+      [
+        'S3_PUBLIC_BASE_URL',
+        'javascript:alert(1)',
+        'S3_PUBLIC_BASE_URL must be an http(s) URL',
+      ],
+      [
+        'S3_REGION',
+        'US East',
+        'S3_REGION must be a region name such as us-east-1',
+      ],
+      [
+        'S3_BUCKET',
+        'Bad_Bucket',
+        'S3_BUCKET must be a valid bucket name (3-63 lowercase letters, digits, dots or hyphens)',
+      ],
+      [
+        'S3_FORCE_PATH_STYLE',
+        'maybe',
+        'S3_FORCE_PATH_STYLE must be true or false',
+      ],
+    ])('rejects %s=%j', (name, value, problem) => {
+      expect(problemsOf({ ...valid, [name]: value })).toEqual([problem]);
+    });
+
+    it('path-style addressing can be switched off for a virtual-hosted store', () => {
+      expect(
+        loadConfig({ ...valid, S3_FORCE_PATH_STYLE: 'false' }).storage
+          .forcePathStyle,
+      ).toBe(false);
+    });
+
+    it('never puts the secret key into an error message', () => {
+      const messages = problemsOf({
+        ...valid,
+        S3_ACCESS_KEY_ID: 'visible-id',
+        S3_ENDPOINT: 'nope',
+        S3_SECRET_ACCESS_KEY: 'very-secret-s3-key',
+      }).join(' ');
+      expect(messages).not.toContain('very-secret-s3-key');
+      expect(messages).not.toContain('visible-id');
     });
   });
 });

@@ -12,6 +12,7 @@ import { LOCKABLE_TABLE_SQL_NAMES } from '../../src/common/constants/lock-tables
 import { createPool, resetData } from '../support/database.js';
 import { createUser, createUserWithRoles } from '../support/factories.js';
 import { schemaFingerprint } from '../support/schema-fingerprint.js';
+import { LIMITED_COLUMNS } from '../support/text-limit-columns.js';
 import { SQLSTATE, sqlError } from '../support/sql.js';
 import {
   TEST_SHADOW_DATABASE,
@@ -241,27 +242,9 @@ const FK_ACTIONS: Record<string, 'r' | 'c' | 'n'> = {
   notifications_actor_id_fkey: 'n',
 };
 
-/** TEXT_LIMITS entry -> the CHECK that must carry the same numbers. */
-const LIMIT_CONSTRAINTS: Record<string, keyof typeof TEXT_LIMITS> = {
-  users_email_length: 'EMAIL',
-  users_full_name_length: 'USER_FULL_NAME',
-  user_roles_application_message_length: 'TEACHER_APPLICATION_MESSAGE',
-  user_roles_decision_note_length: 'DECISION_NOTE',
-  file_assets_original_name_length: 'FILE_ORIGINAL_NAME',
-  courses_title_length: 'COURSE_TITLE',
-  courses_summary_length: 'COURSE_SUMMARY',
-  courses_description_length: 'COURSE_DESCRIPTION',
-  sections_title_length: 'SECTION_TITLE',
-  lessons_title_length: 'LESSON_TITLE',
-  content_blocks_text_body_length: 'TEXT_BLOCK_BODY',
-  tags_name_length: 'TAG_NAME',
-  categories_name_length: 'CATEGORY_NAME',
-  conversations_title_length: 'GROUP_TITLE',
-  messages_body_length: 'MESSAGE_BODY',
-  reports_description_length: 'REPORT_DESCRIPTION',
-  reports_message_snapshot_length: 'MESSAGE_BODY', // the snapshot is a copy of a message body (Decision 77)
-  reports_resolution_note_length: 'REPORT_RESOLUTION_NOTE',
-};
+/** TEXT_LIMITS entry -> the CHECK that must carry the same numbers (one list, shared with the DTO consistency test). */
+const LIMIT_CONSTRAINTS: Record<string, keyof typeof TEXT_LIMITS> =
+  Object.fromEntries(LIMITED_COLUMNS.map((c) => [c.constraint, c.limit]));
 /** TEXT_LIMITS entries that deliberately have no SQL CHECK, and why. A new entry must be mapped above or listed here. */
 const LIMITS_WITHOUT_SQL: Record<string, string> = {
   PASSWORD:

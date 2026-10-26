@@ -12,3 +12,9 @@ export {
   ROLES_KEY,
   Roles,
 } from './auth.decorators.js';
+export {
+  TextLength,
+  codePointLength,
+  isValidText,
+  textLengthApi,
+} from './text-length.decorator.js';

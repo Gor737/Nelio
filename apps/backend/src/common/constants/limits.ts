@@ -98,6 +98,8 @@ export const TIME_LIMITS = {
   TYPING_EXPIRY_MS: 5 * 1000,
   /** Roadmap M9a: orphan file cleanup for files older than 24 hours. */
   ORPHAN_FILE_AGE_HOURS: 24,
+  /** Proposed in M9a (docs/proposed-defaults.md section 13): how long a signed attachment URL works. */
+  SIGNED_URL_TTL_MS: 5 * 60 * 1000,
 } as const;
 
 /** Upload kinds and size caps (Decision 64, Architecture section 16). Sizes are bytes. */
