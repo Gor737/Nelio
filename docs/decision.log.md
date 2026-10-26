@@ -1,6 +1,6 @@
 # Nelio — Decision Log
 
-> **Scope:** the authoritative chronological record of Decisions 1–167.
+> **Scope:** the authoritative chronological record of Decisions 1–168.
 > **Purpose:** records WHAT was decided and WHY. `architecture.md` describes the final HOW; `roadmap.md` describes implementation order.
 > **Status convention:** "Accepted" means the decision was approved by the project owner. Where a decision was later amended, tightened, extended, finalized or had its implementation changed by a later decision, this is stated in its Status line and in the later decision. Original wording is preserved, and the amendment is recorded rather than silently resolved.
 
@@ -2545,18 +2545,39 @@ Add the error code `SERVICE_UNAVAILABLE` with HTTP status **503** to the error-c
 
 ---
 
+## Decision 168 — Marking a lesson complete locks the Enrollment row `FOR NO KEY UPDATE`
+
+**Status:** Accepted (found in M9d by tests against the real database; approved by the project owner 2026-10-26).
+
+### Decision
+The transaction "Mark lesson complete" takes the Course row `FOR SHARE` (Course-S) and then the student's own Enrollment row **`FOR NO KEY UPDATE`**, not `FOR SHARE`. The rest is unchanged: insert-or-ignore of the `LessonCompletion`, then the conditional `completed_at` update (`WHERE completed_at IS NULL`), with `courseCompleted` taken from that update's row count. The lock order of Decision 160 is unchanged (Course, then Enrollment).
+
+### Reason / Context
+- With `FOR SHARE`, two marks by the same student share the Enrollment lock. The mark that completes the course must then upgrade its lock to update `completed_at` while the other mark waits for its uncommitted completion row (the unique-index wait of `ON CONFLICT`): a deadlock, which the transaction retry turned into a timeout (eight parallel marks of the last lesson).
+- Two marks of the last two lessons at once each miss the other's uncommitted row, so a finished course stays unmarked until the next trigger or the nightly recheck (a "stuck completion" like Bug 1, inside one student).
+- `FOR NO KEY UPDATE` serializes one student's marks, does not conflict with the `FOR KEY SHARE` that the completion insert takes for its foreign key, and never delays another student. It is the same exclusive mode that every other Enrollment transition already uses.
+
+### Relationship to existing decisions
+- Amends the "Mark lesson complete" row of the transaction catalog (`architecture.md` section 15) and the M9d lock item of the roadmap; consistent with **Decision 12** (permanent completion snapshot), **Decision 126** (idempotent `PUT`), **Decision 159/160** (retry, lock order). The Course-S versus Course-X serialization that prevents Bug 1 is unchanged.
+
+### Consequences / Constraints
+- Tests that must stay: parallel marks of the last lesson (exactly one `courseCompleted: true`), parallel marks of the last two lessons (15 rounds), the removed-student race, and the Bug 1 scenarios in `test/integration/progress.integration-spec.ts`. A mutation that restores `FOR SHARE` is caught by two of them.
+- Other transactions that change a student's progress or completion must take the Enrollment row in an exclusive mode too.
+
+---
+
 ## Future Decisions
 
 The next available decision number is:
 
-**Decision 168**
+**Decision 169**
 
 ---
 
 # Decision Governance
 
-- **Current decisions:** 1–167
-- **Next available decision:** 168
+- **Current decisions:** 1–168
+- **Next available decision:** 169
 - **Unresolved deployment decision (not a numbered decision yet):** the production hosting provider is not selected; see Decision 165, Consequences.
 - **No silent architectural changes.** The architecture may not be altered without a numbered decision.
 - **Any implementation conflict must result in a new numbered decision.** If a spike or implementation step shows an existing decision is wrong or impossible, work stops, the conflict is written down, and a new proposal (166 and up) is raised and approved before anything changes.

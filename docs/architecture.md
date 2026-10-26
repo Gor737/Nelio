@@ -1,7 +1,7 @@
 # Nelio Architecture
 
 > **Scope:** the final approved v1 architecture of Nelio, a web-based Learning Management System.
-> **Source of truth:** Decisions 1–167 (all Decided). Historical reasoning and decision history live in `decision.log.md`.
+> **Source of truth:** Decisions 1–168 (all Decided). Historical reasoning and decision history live in `decision.log.md`.
 > **Companion files:** `roadmap.md` (implementation order).
 > **Verification note:** a few Prisma/PostgreSQL behaviors were stated from memory and are verified during Spikes A and B (M1, M2). Any contradiction is handled through the Change Protocol in `roadmap.md`, never silently.
 
@@ -669,7 +669,7 @@ Anything making a user an Owner/Assistant (create course, add Assistant, transfe
 | Email-token consume | Conditional update; 0 rows → `TOKEN_INVALID` |
 | Publish (first) | C-X; checks; set status; create channel and Owner/Assistant members; audit |
 | Enroll / approve / accept invitation / reinstate | C-S, Enrollment row; transition; channel membership upsert; `recheckEnrollment`; audit where applicable |
-| Mark lesson complete | C-S, Enrollment `FOR SHARE`; insert-or-ignore; conditional `completed_at` update |
+| Mark lesson complete | C-S, then the student's Enrollment row `FOR NO KEY UPDATE` (Decision 168: `FOR SHARE` deadlocks, and can miss a completion, when one student marks twice at once); insert-or-ignore; conditional `completed_at` update |
 | Lesson publish/unpublish/archive | C-X, Lesson; conditional status change; `recheckCourse` on unpublish/archive |
 | Add Assistant / ownership transfer | User-S (target), C-X; re-read Owner after lock; **demote old Owner first, then promote** |
 | Revoke teacher / suspend | User-X, C-X per assisted course; ownership check; remove Assistant rows; `revokeAllSessions`; audit |

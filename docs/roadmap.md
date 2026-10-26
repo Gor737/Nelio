@@ -1,6 +1,6 @@
 # Nelio Implementation Roadmap
 
-> **Decision range:** 1–167 (all Decided) · **Next decision number:** 168 · **Unresolved deployment decision:** production hosting provider (not selected; see M14)
+> **Decision range:** 1–168 (all Decided) · **Next decision number:** 169 · **Unresolved deployment decision:** production hosting provider (not selected; see M14)
 > **Status:** Design complete (Phases 1–10 closed). Implementation starts at M0.
 
 ---
@@ -95,7 +95,7 @@
 
 ## 4. Change Protocol
 
-Decisions 1–167 are fixed. If a spike or implementation step shows a decision is wrong or impossible:
+Decisions 1–168 are fixed. If a spike or implementation step shows a decision is wrong or impossible:
 
 1. [ ] **Stop** work on the affected item.
 2. [ ] **Write the conflict down** (what the decision says, what was found, evidence).
@@ -409,7 +409,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - [x] **Code-point length helper (approved 2026-10-26):** a shared validator/decorator in `common` that counts a string's length in Unicode code points (`[...value].length` semantics, so an emoji or other astral character counts as 1, like PostgreSQL's `char_length`) and takes its bounds from `TEXT_LIMITS`; used for every request-DTO string that has a limit. It exists to stop the mismatch between PostgreSQL character limits and JavaScript `.length` (UTF-16 units), where a single emoji could pass a 2-character DTO check and then hit the database CHECK as a 500. Tests: bounds on both sides with ASCII, Armenian, emoji (astral) and combining characters; a DTO accepted by the helper is never rejected by the matching SQL CHECK (property-style check against the real database for every limited column)
 
 ### M9a — Files
-- [ ] Add MinIO to Docker Compose and its `MINIO_ROOT_*` variables to `.env.example` — **BLOCKED, owner decision needed** (the official `minio/minio` images can no longer be pulled; see proposed-defaults section 13). The `S3_*` variables are documented in `.env.example`; no compose service was added
+- [ ] Add MinIO to Docker Compose and its `MINIO_ROOT_*` variables to `.env.example` — **OPEN, deliberately not implemented** (owner decision 2026-10-26: the official `minio/minio` images can no longer be pulled; do not use a community mirror or the frozen Bitnami image as the default; first select and verify a specific S3-compatible development image/provider with acceptable provenance, then add the Compose service). The `S3_*` variables are documented in `.env.example`; the Files code is generic S3 and does not depend on the choice. Nothing else in the roadmap waits for it before M14 (production object storage and hosting are chosen there)
 - [x] `StorageDriver` interface + S3/MinIO implementation (Files module only)
 - [x] `POST /files` (multipart, limits per `kind`, real file-type check, generated storage keys); `DELETE /files/:id` (own, unattached)
 - [x] `FILE_TOO_LARGE` (413) and `FILE_TYPE_NOT_ALLOWED` (415) are produced on upload routes only (the global filter maps a JSON-body 413/415 to 400, Decision 167); test both on `POST /files`
@@ -429,7 +429,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 ### M9d — Progress
 - [x] `CompletionService` (`markComplete`, `recheckEnrollment(tx)`, `recheckCourse(tx)`, nightly all-courses recheck); `ProgressQueries` (single statement); `PUT …/lessons/:lessonId/completion`
-- [x] Locks: Course-S, then Enrollment row `FOR SHARE` — **implemented as `FOR NO KEY UPDATE` on the Enrollment row** (`FOR SHARE` deadlocks and can miss a completion when one student marks twice at once; owner decision pending, proposed-defaults section 13)
+- [x] Locks: Course-S, then the Enrollment row `FOR NO KEY UPDATE` (**Decision 168**, approved 2026-10-26: `FOR SHARE` deadlocks and can miss a completion when one student marks twice at once)
 - [x] Tests: idempotent/parallel marking; requires `ACTIVE` enrollment and published same-course lesson; ≥1 published lesson guard; `completed_at` permanent and separate from `percent`; `courseCompleted` from conditional-update row count; **Bug 1 scenario**; removed-student race; progress summary is one query; recheck only completes `ACTIVE` incomplete enrollments
 
 ### M9e — Notifications
@@ -440,9 +440,9 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Status (2026-10-26):** implemented and verified, **one item open (the MinIO Compose service)**. Code: `common/decorators/text-length.decorator.ts` (+ `common/dto/page-query.dto.ts`), and the five modules under `src/modules/{files,catalog,moderation,progress,notifications}`. The cron schedules for the three safety-net jobs (orphan files, completion recheck, notification retention) are M13; in M9 they are callable, tested service methods.
 - Tests: `test/common/text-length.spec.ts` (30), `test/integration/text-limits-consistency` (8, real database, 18 columns x 7 alphabets); Files `file-utils.spec.ts` (48), `files.integration-spec.ts` (43), `files-s3.integration-spec.ts` (12, real S3-compatible store, skips itself without one); Catalog `tag-normalizer.spec.ts` (36), `catalog.integration-spec.ts` (23); Moderation `moderation.integration-spec.ts` (33); Progress `progress.integration-spec.ts` (23); Notifications `notifications.integration-spec.ts` (35, with a real Socket.IO client). Mutation checks: Catalog (insert order), Progress (5: Course-S lock, Enrollment lock mode, ACTIVE filter, published-lesson guard, conditional update) and Notifications (9) were all caught.
-- Found while testing: the transaction catalog's `FOR SHARE` on the Enrollment row is not safe for two marks by the same student (lock-upgrade deadlock, and a missed completion); the implementation uses `FOR NO KEY UPDATE`. **`docs/architecture.md` is not yet updated: owner decision pending (proposed-defaults section 13).**
-- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 13 (**proposed, not yet reviewed by the owner**).
-- Open: MinIO distribution (above); the three scheduled jobs (M13); the first CI run on GitHub; `npm audit` advisories (M14); email token lifetime (M11a); `PER_CONVERSATION_BURST` on real chat (M10c).
+- Found while testing and **approved as Decision 168 (2026-10-26)**: the transaction catalog's `FOR SHARE` on the Enrollment row was not safe for two marks by the same student (lock-upgrade deadlock, and a missed completion); the Enrollment row is now locked `FOR NO KEY UPDATE`, `architecture.md` is updated, and the concurrency regression tests stay.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 13 (**still PROPOSED: none of its individual proposals is approved yet**, except the Enrollment lock mode, which is Decision 168).
+- Open: selecting and verifying an S3-compatible development image/provider with acceptable provenance (above); the three scheduled jobs (M13); the first CI run on GitHub; `npm audit` advisories (M14); email token lifetime (M11a); `PER_CONVERSATION_BURST` on real chat (M10c).
 
 ---
 
@@ -620,7 +620,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 ## 8. Decision Status
 
-- **Decided:** 1–167 (165: PostgreSQL 18+ and database-generated `uuidv7()`; 166: `SERVICE_UNAVAILABLE` 503 in the status policy; 167: M6 infrastructure choices; all approved 2026-10-25)
+- **Decided:** 1–168 (165: PostgreSQL 18+ and database-generated `uuidv7()`; 166: `SERVICE_UNAVAILABLE` 503 in the status policy; 167: M6 infrastructure choices; all approved 2026-10-25; 168: Enrollment row `FOR NO KEY UPDATE` when marking a lesson complete, approved 2026-10-26)
 - **Open design questions:** none
 - **Unresolved deployment decision:** the production hosting provider is not selected. It blocks nothing before M14; its PostgreSQL 18 compatibility check is a deployment requirement (M14).
 - **Initial implementation defaults:** the values in `docs/proposed-defaults.md` were approved by the owner on 2026-10-25 as initial defaults; they are not requirements of the original documents.
