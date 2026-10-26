@@ -2,6 +2,7 @@ export { RATE_LIMIT_KEY, RateLimit } from './rate-limit.decorator.js';
 export {
   COURSE_ROLE_KEY,
   CourseRole,
+  CurrentCourseAccess,
   CurrentUser,
   IS_PUBLIC_KEY,
   OPENAPI_OPTIONAL_AUTH,

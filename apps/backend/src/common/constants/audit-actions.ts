@@ -39,6 +39,8 @@ export const AUDIT_ACTIONS = {
   TEACHER_APPROVED: documented('users'),
   TEACHER_REJECTED: approvedDerived('users'),
   TEACHER_REVOKED: approvedDerived('users'),
+  /** Decision 128: a REJECTED or REVOKED user applies again; the overwritten application message is kept here. */
+  TEACHER_REAPPLIED: approvedDerived('users'),
   USER_SUSPENDED: approvedDerived('users'),
   USER_UNSUSPENDED: approvedDerived('users'),
   ADMIN_ROLE_GRANTED: approvedDerived('users'),

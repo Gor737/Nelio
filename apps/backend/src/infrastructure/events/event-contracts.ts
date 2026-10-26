@@ -15,6 +15,15 @@ export interface EventContracts {
   };
   'message.edited': { conversationId: string; messageId: string };
   'message.deleted': { conversationId: string; messageId: string };
+  // conversation-level changes (Decision 158: conversation:added/removed/updated/read go to the affected users after commit)
+  'conversation.added': { conversationId: string; userId: string };
+  'conversation.removed': { conversationId: string; userId: string };
+  'conversation.updated': { conversationId: string };
+  'conversation.read': {
+    conversationId: string;
+    userId: string;
+    lastReadSeq: number;
+  };
   'membership.ended': {
     userId: string;
     courseId: string | null;
@@ -71,6 +80,10 @@ const EVENT_NAME_MAP: Record<EventName, true> = {
   'message.created': true,
   'message.edited': true,
   'message.deleted': true,
+  'conversation.added': true,
+  'conversation.removed': true,
+  'conversation.updated': true,
+  'conversation.read': true,
   'membership.ended': true,
   'session.revoked': true,
   'socket.connected': true,

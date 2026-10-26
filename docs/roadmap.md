@@ -451,38 +451,45 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M9 · **Unblocks:** M11. Users first; then Content and Chat (either order); Chat steps in order.
 
 ### M10a — Users
-- [ ] `/me` (get, patch); user search (login required, ≥2 chars, ≤20, no pagination, safe fields, suspended excluded, trigram index); `/users/:id`; teacher application endpoints
-- [ ] Primitives for Admin/Auth: `createWithStudentRole(tx)`, `setTokensValidAfter(tx)`, application decisions, revocation/suspension
-- [ ] Tests: email only in `/me`; mass assignment (`role`) rejected; apply/re-apply after `REJECTED`/`REVOKED` (decided pair nulled, old message to audit); `APPLICATION_PENDING`, `ALREADY_TEACHER` (incl. Admin with ACTIVE Teacher); user + STUDENT role atomic; search excludes suspended and hides email
+- [x] `/me` (get, patch); user search (login required, ≥2 chars, ≤20, no pagination, safe fields, suspended excluded, trigram index); `/users/:id`; teacher application endpoints
+- [x] Primitives for Admin/Auth: `createWithStudentRole(tx)`, `setTokensValidAfter(tx)`, application decisions, revocation/suspension
+- [x] Tests: email only in `/me`; mass assignment (`role`) rejected; apply/re-apply after `REJECTED`/`REVOKED` (decided pair nulled, old message to audit); `APPLICATION_PENDING`, `ALREADY_TEACHER` (incl. Admin with ACTIVE Teacher); user + STUDENT role atomic; search excludes suspended and hides email
 
 ### M10b — Content
-- [ ] Sections, lessons, blocks CRUD; shared full-list reorder helper (ID-list validation, parent lock, `ORDER_MISMATCH`); lesson lifecycle and `move`; `visibleLessonWhere`
-- [ ] Outline vs public syllabus; student vs teacher lesson DTOs; signed download URLs re-checked each request
-- [ ] Video URL parser (YouTube/Vimeo only; provider + id stored; embed URL built server-side); Markdown stored as text with length limit
-- [ ] Lesson status changes call `recheckCourse` inside Course-X
-- [ ] **Permanent lesson deletion rule (approved 2026-10-26):** a lesson may be hard-deleted only if it was never published (`first_published_at IS NULL`) **and** has no completions; "not currently published" is not enough (an `ARCHIVED` lesson that was published once is not deletable). Test both conditions, plus an `ARCHIVED` lesson that was never published (deletable)
-- [ ] **Provider-specific video id validation (approved 2026-10-26, not implemented before M10b):** the id is checked against the provider's own pattern (YouTube and Vimeo) in the Content module, in addition to the SQL length check (1-64); the embed URL is built server-side from provider + id only. Tests: hostile ids (quotes, slashes, `javascript:`, whitespace, over-long) rejected for both providers
-- [ ] Tests: stale reorder → 409; parallel appends don't collide; publish needs ≥1 block; lesson with completion can't be deleted; archive before delete; cross-course move 404; students get 404 for non-published lessons everywhere (incl. download); `COURSE_ARCHIVED`/`COURSE_ADMIN_LOCKED` precedence on every mutation; unsupported video hosts rejected; `FILE` block checks kind/uploader/uniqueness; Bug 1 at HTTP level
+- [x] Sections, lessons, blocks CRUD; shared full-list reorder helper (ID-list validation, parent lock, `ORDER_MISMATCH`); lesson lifecycle and `move`; `visibleLessonWhere`
+- [x] Outline vs public syllabus; student vs teacher lesson DTOs; signed download URLs re-checked each request
+- [x] Video URL parser (YouTube/Vimeo only; provider + id stored; embed URL built server-side); Markdown stored as text with length limit
+- [x] Lesson status changes call `recheckCourse` inside Course-X
+- [x] **Permanent lesson deletion rule (approved 2026-10-26):** a lesson may be hard-deleted only if it was never published (`first_published_at IS NULL`) **and** has no completions; "not currently published" is not enough (an `ARCHIVED` lesson that was published once is not deletable). Test both conditions, plus an `ARCHIVED` lesson that was never published (deletable)
+- [x] **Provider-specific video id validation (approved 2026-10-26, not implemented before M10b):** the id is checked against the provider's own pattern (YouTube and Vimeo) in the Content module, in addition to the SQL length check (1-64); the embed URL is built server-side from provider + id only. Tests: hostile ids (quotes, slashes, `javascript:`, whitespace, over-long) rejected for both providers
+- [x] Tests: stale reorder → 409; parallel appends don't collide; publish needs ≥1 block; lesson with completion can't be deleted; archive before delete; cross-course move 404; students get 404 for non-published lessons everywhere (incl. download); `COURSE_ARCHIVED`/`COURSE_ADMIN_LOCKED` precedence on every mutation; unsupported video hosts rejected; `FILE` block checks kind/uploader/uniqueness; Bug 1 at HTTP level
 
 ### M10c — Chat (three steps, in order)
 
 **Step 1 — Conversations and membership (REST)**
-- [ ] Get-or-create DM (empty DMs hidden); groups (creator `ADMIN`, cap 50); add/remove/promote/leave; last-admin promotion; rename; mute; `GET /courses/:id/channel`; members list
-- [ ] Tests: simultaneous first DMs → one conversation; 10 parallel adds never pass 50; two admins adding concurrently; blocked → neutral `MEMBERS_UNAVAILABLE`; `CANNOT_MESSAGE_USER` same either side; last-admin leave promotes oldest member (ties by user id); returning member's row reused; non-members 404
+- [x] Get-or-create DM (empty DMs hidden); groups (creator `ADMIN`, cap 50); add/remove/promote/leave; last-admin promotion; rename; mute; `GET /courses/:id/channel`; members list
+- [x] Tests: simultaneous first DMs → one conversation; 10 parallel adds never pass 50; two admins adding concurrently; blocked → neutral `MEMBERS_UNAVAILABLE`; `CANNOT_MESSAGE_USER` same either side; last-admin leave promotes oldest member (ties by user id); returning member's row reused; non-members 404
 
 **Step 2 — Messages and `CourseChannelService`**
-- [ ] Send, history (`before`/`after` `seq` cursors), edit, soft delete (author or course Owner/Assistant), mark read (`GREATEST`), unread counts, read-only for archived courses, `CLIENT_ID_REUSED`, moderator-deletion audit
-- [ ] Message send and typing are limited per user and conversation on both transports (Per-conversation burst, see M8)
-- [ ] `CourseChannelService`: `createForCourse`, idempotent `addMember`/`endMembership` (no-op without channel), `syncCourse`
-- [ ] Tests: parallel same-`clientId` sends → one message, no `seq` gap; contiguous `seq` under parallel sends; former member can't send/read; archived: send 409, delete allowed; deleted message returns no body but row keeps it; edit-after-delete 409; mark-read never backwards and rejects above `last_seq`; unread excludes own/deleted; `syncCourse` repairs damage and leaves correct state untouched
+- [x] Send, history (`before`/`after` `seq` cursors), edit, soft delete (author or course Owner/Assistant), mark read (`GREATEST`), unread counts, read-only for archived courses, `CLIENT_ID_REUSED`, moderator-deletion audit
+- [x] Message send and typing are limited per user and conversation on both transports (Per-conversation burst, see M8)
+- [x] `CourseChannelService`: `createForCourse`, idempotent `addMember`/`endMembership` (no-op without channel), `syncCourse`
+- [x] Tests: parallel same-`clientId` sends → one message, no `seq` gap; contiguous `seq` under parallel sends; former member can't send/read; archived: send 409, delete allowed; deleted message returns no body but row keeps it; edit-after-delete 409; mark-read never backwards and rejects above `last_seq`; unread excludes own/deleted; `syncCourse` repairs damage and leaves correct state untouched
 
 **Step 3 — Real-time layer**
-- [ ] `ChatGateway` binds `@UseFilters(AllExceptionsFilter)`, re-checks the user on every event with `RealtimeService.requireActiveUser`, and applies the Per-conversation burst class through the shared `RateLimiter` (REST routes with `@RateLimit('PER_CONVERSATION_BURST', { conversationParam: 'id' })`)
-- [ ] `ChatGateway` (`message:send` with ack, `typing:start/stop`, `presence:subscribe`); `PresenceService` (multi-socket, ~5 s debounce, DM/group peers only, block-filtered, `last_seen_at` on last disconnect); `GET /me/presence`
-- [ ] Post-commit recipient computation and emits: `message:new/edited/deleted`, `conversation:added/removed/updated/read`, `presence:update`, `typing`
-- [ ] Tests: removed member stops receiving `message:new` immediately; socket and REST return same errors; same `clientId` twice → one message, one event; forged typing ignored; presence with two sockets and debounce; blocked pairs hidden; `last_seen_at` exposed by no endpoint; `after=` returns exactly missed messages; gateway never imports DB service
+- [x] `ChatGateway` binds `@UseFilters(AllExceptionsFilter)`, re-checks the user on every event with `RealtimeService.requireActiveUser`, and applies the Per-conversation burst class through the shared `RateLimiter` (REST routes with `@RateLimit('PER_CONVERSATION_BURST', { conversationParam: 'id' })`)
+- [x] `ChatGateway` (`message:send` with ack, `typing:start/stop`, `presence:subscribe`); `PresenceService` (multi-socket, ~5 s debounce, DM/group peers only, block-filtered, `last_seen_at` on last disconnect); `GET /me/presence`
+- [x] Post-commit recipient computation and emits: `message:new/edited/deleted`, `conversation:added/removed/updated/read`, `presence:update`, `typing`
+- [x] Tests: removed member stops receiving `message:new` immediately; socket and REST return same errors; same `clientId` twice → one message, one event; forged typing ignored; presence with two sockets and debounce; blocked pairs hidden; `last_seen_at` exposed by no endpoint; `after=` returns exactly missed messages; gateway never imports DB service
 
 **Exit:** all three modules green (`CourseChannelService` exercised via factories).
+
+**Status (2026-10-26):** implemented and verified (all three modules green; dependency checker shows no import between Users, Content and Chat). Code: `src/modules/{users,content,chat}`, plus in `common` `@CurrentCourseAccess()` and `assertCourseMutable`, and in `infrastructure/events` four conversation event names.
+- Tests: Users `users.integration-spec.ts` (30); Content `content.integration-spec.ts` (45) and `test/modules/content/video-url.spec.ts` (76, unit); Chat `chat-conversations.integration-spec.ts` (28), `chat-messages.integration-spec.ts` (30) and `chat-realtime.integration-spec.ts` (23, real Socket.IO clients). Mutation checks (about 80 mutations of locks, state checks, visibility, idempotency, block rules, delivery filters, typing and presence) are all caught by the tests.
+- Found while testing: background delivery after a test ended deadlocked with the next test's `TRUNCATE`; `ChatDeliveryService.idle()` (also awaited at shutdown) fixes it and the chat specs wait on it after every test.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 14 (**PROPOSED, not yet reviewed**; the first block of it lists the three points that go slightly beyond a pure reading: the audit action `TEACHER_REAPPLIED`, four new event names, and `409 RESOURCE_CONFLICT` for a full group).
+- Safety-net jobs are callable methods only (`CourseChannelService.reconcileAll`); their schedules are M13, as is wiring `CourseChannelService` into publish, enrollment and team transitions (M11).
+- Open: the same items as M9 (MinIO development store, the first CI run, `npm audit`, the email token lifetime in M11a).
 
 ---
 

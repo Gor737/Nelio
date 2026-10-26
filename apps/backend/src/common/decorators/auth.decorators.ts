@@ -9,6 +9,7 @@ import type {
   CourseRelationship,
   PlatformRole,
 } from '../constants/permission-matrix.js';
+import type { CourseAccess } from '../access/course-access.js';
 import type {
   AuthenticatedRequest,
   AuthenticatedUser,
@@ -61,4 +62,18 @@ export const CourseRole = (...relationships: CourseRelationship[]) =>
 export const CurrentUser = createParamDecorator(
   (_data: unknown, context: ExecutionContext): AuthenticatedUser | undefined =>
     context.switchToHttp().getRequest<AuthenticatedRequest>().user,
+);
+
+/** The caller's relationship to `:courseId` and the course state, as resolved by the `@CourseRole()` guard of the same route. */
+export const CurrentCourseAccess = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): CourseAccess => {
+    const access = context
+      .switchToHttp()
+      .getRequest<AuthenticatedRequest>().courseAccess;
+    if (!access)
+      throw new TypeError(
+        '@CurrentCourseAccess() needs @CourseRole() on the same route',
+      );
+    return access;
+  },
 );

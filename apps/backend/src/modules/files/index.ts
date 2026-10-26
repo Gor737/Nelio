@@ -5,4 +5,4 @@ export {
   FileCleanupService,
   type FileCleanupResult,
 } from './services/file-cleanup.service.js';
-export { type SignedUrlDto } from './dto/file.dto.js';
+export { SignedUrlDto } from './dto/file.dto.js';

@@ -11,3 +11,4 @@ export {
   CourseAccessService,
   relationshipOf,
 } from './course-access.service.js';
+export { assertCourseMutable } from './course-mutability.js';
