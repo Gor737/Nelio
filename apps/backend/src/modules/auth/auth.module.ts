@@ -17,7 +17,7 @@ import { TokenIssuer } from './services/token-issuer.service.js';
 /**
  * Auth (Layer 2): passwords, sessions, email tokens and Google sign-in. It owns `RefreshToken`, `AuthIdentity` and `EmailToken`, calls
  * Users for the account primitives, and is the only module that sends mail. `SessionsService.revokeAllSessions(tx, userId)` is its
- * public API for Admin's suspension transaction.
+ * public API for Admin's suspension transaction; `PasswordService` and `checkPassword` serve the first-Admin seed.
  */
 @Module({
   imports: [UsersModule, MailModule],
@@ -32,6 +32,6 @@ import { TokenIssuer } from './services/token-issuer.service.js';
     AuthCleanupService,
     { provide: GoogleTokenVerifier, useClass: GoogleLibraryVerifier },
   ],
-  exports: [SessionsService, AuthCleanupService],
+  exports: [SessionsService, AuthCleanupService, PasswordService],
 })
 export class AuthModule {}

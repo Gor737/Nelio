@@ -450,7 +450,7 @@ Optional-auth endpoints: no token means anonymous; an invalid or expired token i
 - **Google:** frontend-supplied ID token verified (signature, audience, issuer, expiry, `email_verified`); the four sign-in rules (match by `sub`; link to existing verified-email user, clearing the password of an unverified account; create new; reject unverified Google email). Match on `sub`, never email. No Google tokens stored. A login method must remain (`NO_LOGIN_METHOD_REMAINING`).
 - **Revocation:** `revokeAllSessions(tx, userId)` revokes refresh tokens and sets `tokens_valid_after`, inside the caller's transaction. Used by suspension, password reset, and logout-all. Change-password revokes other sessions but keeps the current device's family. Teacher revocation does not revoke sessions.
 - **No account lockout** in v1. Throttling keys: IP plus submitted email on sensitive endpoints.
-- **First Admin:** created by an environment-based seed script (email marked verified, runs only if no Admin exists). Later Admins via `PUT /admin/users/:id/admin-role`. Registration can never choose a role.
+- **First Admin:** created by an environment-based seed script (email marked verified, runs only if no Admin exists). Run it with `npm run seed:admin` (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, optional `SEED_ADMIN_NAME`; an already registered email is refused). Later Admins via `PUT /admin/users/:id/admin-role`. Registration can never choose a role.
 
 ---
 
@@ -536,7 +536,7 @@ Check order (first failure wins): `429 → 401 → 403 ACCOUNT_SUSPENDED → gua
 | Enrollment (teacher) | `GET …/students`, `…/students/:userId/progress`; `POST …/students/:userId/` approve, reject, remove, reinstate |
 | Invitations | `POST/GET …/invitations`; `POST …/invitations/:id/revoke`; `GET /me/invitations`; `POST /me/invitations/:id/accept` and `decline` |
 | Chat | `POST /conversations/direct`, `/groups`; `GET/PATCH /conversations/:id`; members (list, add, remove, role); `leave`; `PATCH …/membership`; messages (history, send, edit, delete); `PUT …/read`; `POST …/messages/:id/report` |
-| Admin | users (list, get, suspend, unsuspend, revoke-teacher, admin-role); teacher-applications; courses (list, get, outline, lesson review, `lock`, `unlock`, `restore`, ownership-transfer, student remove/reinstate); categories and tags (CRUD, merge); reports (list, get, `context`, dismiss, action); `audit-logs`; `stats` |
+| Admin | users (list, get, suspend, unsuspend, revoke-teacher, admin-role); teacher-applications; courses (list, get, outline, lesson review, `lock`, `unlock`, `restore`, ownership-transfer, student remove/reinstate); categories (CRUD) and tags (list, merge); reports (list, get, `context`, dismiss, action); `audit-logs`; `stats` |
 | Infra | `GET /health` (unprefixed, unversioned; Decision 167), Swagger UI at `/api/docs` and the document at `/api/docs-json` |
 
 ### REST versus WebSocket responsibilities

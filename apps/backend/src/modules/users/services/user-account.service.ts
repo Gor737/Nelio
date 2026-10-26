@@ -173,6 +173,89 @@ export class UserAccountService {
     });
   }
 
+  /**
+   * Gives the ADMIN role (`PUT /admin/users/:id/admin-role`). The user must exist and be ACTIVE (a suspended account is 409). Granting
+   * to an Admin is a no-op: no write, no audit row, and the result says so. Granting cannot shrink the Admin set, so it needs no
+   * `ADMIN-SET` lock.
+   */
+  async grantAdminRole(
+    tx: Tx,
+    input: { userId: string; actorId: string },
+  ): Promise<{ changed: boolean }> {
+    const user = await tx.$queryRaw<{ status: string }[]>`
+      SELECT status FROM users WHERE id = ${input.userId}::uuid FOR SHARE`;
+    if (user.length === 0) throw new ApiException('NOT_FOUND');
+    if (user[0].status !== 'ACTIVE')
+      throw new ApiException('INVALID_STATE_TRANSITION', {
+        message: 'A suspended account cannot become an Admin',
+      });
+    const rows = await tx.$queryRaw<{ user_id: string }[]>`
+      INSERT INTO user_roles (user_id, role, status, decided_by, decided_at)
+      VALUES (${input.userId}::uuid, 'ADMIN', 'ACTIVE', ${input.actorId}::uuid, now())
+      ON CONFLICT (user_id, role) DO UPDATE
+         SET status = 'ACTIVE', decision_note = NULL, decided_by = ${input.actorId}::uuid, decided_at = now(), updated_at = now()
+       WHERE user_roles.status <> 'ACTIVE'
+      RETURNING user_id`;
+    if (rows.length === 0) return { changed: false };
+    await this.audit.record(tx, {
+      actorId: input.actorId,
+      action: 'ADMIN_ROLE_GRANTED',
+      targetType: 'USER',
+      targetId: input.userId,
+    });
+    return { changed: true };
+  }
+
+  /**
+   * Takes the ADMIN role away. The caller holds the `ADMIN-SET` advisory lock and has checked, AFTER taking it, that another ACTIVE Admin
+   * remains (`countOtherActiveAdmins`): this method has no way to know the rest of the set safely. Revoking from a non-Admin is a no-op.
+   */
+  async revokeAdminRole(
+    tx: Tx,
+    input: { userId: string; actorId: string },
+  ): Promise<{ changed: boolean }> {
+    const rows = await tx.$queryRaw<{ user_id: string }[]>`
+      UPDATE user_roles
+         SET status = 'REVOKED', decided_by = ${input.actorId}::uuid, decided_at = now(), updated_at = now()
+       WHERE user_id = ${input.userId}::uuid AND role = 'ADMIN' AND status = 'ACTIVE'
+      RETURNING user_id`;
+    if (rows.length === 0) return { changed: false };
+    await this.audit.record(tx, {
+      actorId: input.actorId,
+      action: 'ADMIN_ROLE_REVOKED',
+      targetType: 'USER',
+      targetId: input.userId,
+    });
+    return { changed: true };
+  }
+
+  /** Is the user an ACTIVE Admin of an ACTIVE account right now? */
+  async isActiveAdmin(tx: Tx, userId: string): Promise<boolean> {
+    const rows = await tx.$queryRaw<{ one: number }[]>`
+      SELECT 1 AS one FROM user_roles r JOIN users u ON u.id = r.user_id
+       WHERE r.user_id = ${userId}::uuid AND r.role = 'ADMIN' AND r.status = 'ACTIVE' AND u.status = 'ACTIVE'`;
+    return rows.length > 0;
+  }
+
+  /** How many ACTIVE Admins of ACTIVE accounts exist (the first-Admin seed runs only when it is zero; the caller holds `ADMIN-SET`). */
+  async countActiveAdmins(tx: Tx): Promise<number> {
+    const rows = await tx.$queryRaw<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM user_roles r JOIN users u ON u.id = r.user_id
+       WHERE r.role = 'ADMIN' AND r.status = 'ACTIVE' AND u.status = 'ACTIVE'`;
+    return rows[0].n;
+  }
+
+  /**
+   * How many ACTIVE Admins of ACTIVE accounts there are besides `userId` (the rule "at least one stays", Decision 135). Meaningful only
+   * while the caller holds the `ADMIN-SET` advisory lock, so that two Admins removing each other see each other's result.
+   */
+  async countOtherActiveAdmins(tx: Tx, userId: string): Promise<number> {
+    const rows = await tx.$queryRaw<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM user_roles r JOIN users u ON u.id = r.user_id
+       WHERE r.role = 'ADMIN' AND r.status = 'ACTIVE' AND u.status = 'ACTIVE' AND r.user_id <> ${userId}::uuid`;
+    return rows[0].n;
+  }
+
   /** One conditional update of a role row from a known state; the decided pair is set together (CHECK `user_roles_decided_pair`). */
   private async decideRole(
     tx: Tx,

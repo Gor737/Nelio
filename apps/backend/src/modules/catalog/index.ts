@@ -4,3 +4,10 @@ export {
   CourseTagsService,
   type CourseTag,
 } from './services/course-tags.service.js';
+export {
+  CatalogAdminService,
+  type AdminTagRecord,
+  type CategoryRecord,
+  type TagMergeResult,
+} from './services/catalog-admin.service.js';
+export { CatalogService } from './services/catalog.service.js';

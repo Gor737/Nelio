@@ -548,24 +548,29 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M11 · **Unblocks:** M13. Admin owns no tables and no business rules (decision 47).
 
-- [ ] Users, applications, revoke-teacher, suspend/unsuspend, admin-role (under `ADMIN-SET` advisory lock)
-- [ ] Courses: list, get, outline, lesson review (read-only, no audit), `lock`, `unlock`, `restore`, ownership transfer, student remove/reinstate
-- [ ] Catalog management incl. tag merge
-- [ ] Reports: queue, detail, separately audited `context`, dismiss, action (can delete message, closes sibling reports)
-- [ ] Audit-log viewer, stats
-- [ ] First-Admin seed script (env-based, email verified, only if no Admin exists)
+- [x] Users, applications, revoke-teacher, suspend/unsuspend, admin-role (under `ADMIN-SET` advisory lock)
+- [x] Courses: list, get, outline, lesson review (read-only, no audit), `lock`, `unlock`, `restore`, ownership transfer, student remove/reinstate
+- [x] Catalog management incl. tag merge
+- [x] Reports: queue, detail, separately audited `context`, dismiss, action (can delete message, closes sibling reports)
+- [x] Audit-log viewer, stats
+- [x] First-Admin seed script (env-based, email verified, only if no Admin exists)
 
 **Tests:**
-- [ ] Two Admins demoting/suspending each other → at least one active Admin remains; `CANNOT_SUSPEND_SELF` is 400
-- [ ] Revoke teacher vs ownership transfer: never a revoked Owner, either order
-- [ ] Suspension atomic (status, Assistant rows removed and not restored on unsuspend, `revokeAllSessions`, audit); next request 403, refresh fails, sockets get `session:revoked` and disconnect
-- [ ] **Bug 2 scenario:** sibling-report resolution has no deadlock; second gets `REPORT_ALREADY_RESOLVED`
-- [ ] Owner restore vs Admin lock → course ends locked; `unlock` leaves `ARCHIVED`; `restore` publishes; both `COURSE_NOT_LOCKED` when unlocked
-- [ ] Lock on already-archived course; locked-course visibility re-verified end-to-end
-- [ ] `context` writes `REPORT_CONTEXT_VIEWED` each time (~10 messages each side); other report endpoints don't
-- [ ] Tag merge skips courses already holding the target tag
-- [ ] Every `/admin/*` endpoint returns 403 to non-Admins
-- [ ] Seed script idempotent
+- [x] Two Admins demoting/suspending each other → at least one active Admin remains; `CANNOT_SUSPEND_SELF` is 400
+- [x] Revoke teacher vs ownership transfer: never a revoked Owner, either order
+- [x] Suspension atomic (status, Assistant rows removed and not restored on unsuspend, `revokeAllSessions`, audit); next request 403, refresh fails, sockets get `session:revoked` and disconnect
+- [x] **Bug 2 scenario:** sibling-report resolution has no deadlock; second gets `REPORT_ALREADY_RESOLVED`
+- [x] Owner restore vs Admin lock → course ends locked; `unlock` leaves `ARCHIVED`; `restore` publishes; both `COURSE_NOT_LOCKED` when unlocked
+- [x] Lock on already-archived course; locked-course visibility re-verified end-to-end
+- [x] `context` writes `REPORT_CONTEXT_VIEWED` each time (~10 messages each side); other report endpoints don't
+- [x] Tag merge skips courses already holding the target tag
+- [x] Every `/admin/*` endpoint returns 403 to non-Admins
+- [x] Seed script idempotent
+
+**Status (2026-10-27):** implemented and verified. Admin (`src/modules/admin`, 33 endpoints under `/admin/*`, all `@Roles('ADMIN')`) owns no table: each action is one transaction that calls the owner's primitive in the global lock order. The primitives were added to their owners: Users (`grantAdminRole`, `revokeAdminRole`, `isActiveAdmin`, `countOtherActiveAdmins`, `countActiveAdmins`), Courses (`CourseAdminService`: list, get, outline, lesson review, `lock`/`unlock`/`restore`; `CourseTeamService.removeAssistantRowsOfInTx`), Catalog (`CatalogAdminService`: categories, tag list, merge), Moderation (`ReportQueueService`: queue, detail, `context`, `closeInTx`), Chat (`MessagesService.deleteAsModeratorInTx`). Seed: `npm run seed:admin` (`FirstAdminSeeder`).
+- Tests: `admin-users` (27), `admin-courses` (20), `admin-reports` (17), `admin-suspension-socket` (1, a real socket client). Every roadmap test above is covered; the sibling-report test also proves the lock order (a request waiting at the Message holds no Report lock). Mutation checks (about 55 on the lock, protection, audit and privacy lines): all caught except the survivors below, which are defense in depth behind another guard: the actor re-check after `ADMIN-SET` and the last-Admin check in `suspend` (the actor is itself an active Admin, so the count is never zero without a parallel request that the lock already orders), the Course-X read lock on `lock` (the conditional `UPDATE` takes the same row lock), the course lock in `removeAssistantRowsOfInTx` (the User-X lock already stops new teams), ascending order in the tag-merge and report locks (single statements; the Message lock already orders resolutions), the category in-use and slug-clash checks (the foreign key and the unique index answer the same 409), and the `ADMIN-SET` lock in the seed (the unique email index).
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 16 (**PROPOSED, not yet reviewed**; it lists first the tags decision: list and merge only).
+- Open: the private Vimeo hash (M10b), the MinIO development store, the first CI run, `npm audit` (M14); scheduling of the cleanup services (M13).
 
 ---
 

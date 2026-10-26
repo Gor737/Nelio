@@ -138,6 +138,37 @@ export class CourseTeamService {
     });
   }
 
+  /**
+   * Removes the person from EVERY team they are an Assistant of (revoking the Teacher role or suspending the account, Decision 133). The
+   * caller holds the User-X lock of the person, so nobody can add them to a team meanwhile; the courses are locked exclusively in
+   * ascending id order, whatever their status, and the channel membership ends. The rows are not restored by unsuspending. Returns the
+   * course ids.
+   */
+  async removeAssistantRowsOfInTx(
+    tx: Tx,
+    input: { userId: string; actorId: string },
+  ): Promise<string[]> {
+    const assisted = await tx.$queryRaw<{ course_id: string }[]>`
+      SELECT course_id FROM course_teachers WHERE user_id = ${input.userId}::uuid AND role = 'ASSISTANT' ORDER BY course_id`;
+    const removed: string[] = [];
+    for (const { course_id: courseId } of assisted) {
+      await lockRow(tx, 'course', courseId, 'NO_KEY_UPDATE');
+      const count = await tx.$executeRaw`
+        DELETE FROM course_teachers WHERE course_id = ${courseId}::uuid AND user_id = ${input.userId}::uuid AND role = 'ASSISTANT'`;
+      if (count === 0) continue; // promoted to Owner in between; the caller's ownership check catches it
+      await this.channels.endMembership(tx, courseId, input.userId);
+      await this.audit.record(tx, {
+        actorId: input.actorId,
+        action: 'COURSE_ASSISTANT_REMOVED',
+        targetType: 'COURSE',
+        targetId: courseId,
+        metadata: { assistantId: input.userId, byAdmin: true },
+      });
+      removed.push(courseId);
+    }
+    return removed;
+  }
+
   transferOwnership(
     actorId: string,
     courseId: string,

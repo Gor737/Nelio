@@ -211,6 +211,44 @@ export class MessagesService {
   }
 
   /**
+   * An Admin's deletion of a reported message (Decision 132: Admins delete others' messages ONLY through report resolution, so the
+   * Admin module is the only caller, inside the resolution transaction). Locks follow the global order: the Conversation, then the
+   * Message; the Admin then locks the Reports. The Admin does not need to be a member. Deleting a message that is already deleted is a
+   * no-op (`deleted: false`, no second audit row), which is what a second resolution of the same message meets.
+   */
+  async deleteAsModeratorInTx(
+    tx: Tx,
+    input: { messageId: string; actorId: string; reportId: string },
+  ): Promise<{ deleted: boolean }> {
+    const found = await tx.$queryRaw<{ conversation_id: string }[]>`
+      SELECT conversation_id FROM messages WHERE id = ${input.messageId}::uuid`;
+    if (found.length === 0) throw new ApiException('NOT_FOUND');
+    const conversationId = found[0].conversation_id;
+    const conversation = await lockConversation(tx, conversationId);
+    const message = await this.lockMessage(tx, conversationId, input.messageId);
+    if (message.deleted_at !== null) return { deleted: false };
+    await tx.$executeRaw`
+      UPDATE messages SET deleted_at = now(), deleted_by = ${input.actorId}::uuid WHERE id = ${input.messageId}::uuid`;
+    await this.audit.record(tx, {
+      actorId: input.actorId,
+      action: 'MESSAGE_DELETED_BY_MODERATOR',
+      targetType: 'MESSAGE',
+      targetId: input.messageId,
+      metadata: {
+        conversationId,
+        courseId: conversation.courseId,
+        authorId: message.sender_id,
+        reportId: input.reportId,
+      },
+    });
+    emitAfterCommit(tx, 'message.deleted', {
+      conversationId,
+      messageId: input.messageId,
+    });
+    return { deleted: true };
+  }
+
+  /**
    * Moves my read position forward: `GREATEST(old, seq)`, so it never goes backwards. A position above the conversation's `last_seq` is
    * 400. Other devices of mine are told (`conversation:read`).
    */
