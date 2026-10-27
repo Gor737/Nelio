@@ -14,6 +14,7 @@
     "start:dev": "node --env-file-if-exists=../../.env ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:debug": "node --env-file-if-exists=../../.env ./node_modules/@nestjs/cli/bin/nest.js start --debug --watch",
     "start:prod": "node dist/main",
+    "smoke:prod": "node scripts/prod-smoke.mjs",
     "seed:admin": "node --env-file-if-exists=../../.env dist/seed-first-admin.js",
     "openapi:export": "nest build && node dist/openapi-export.js",
     "lint": "oxlint --type-aware src/ test/",
@@ -32,6 +33,7 @@
     "db:prepare": "node --env-file-if-exists=../../.env scripts/db-prepare.mjs",
     "db:migrate:create": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate dev --create-only",
     "db:migrate:deploy": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate deploy",
+    "db:restore-rehearsal": "node --env-file-if-exists=../../.env scripts/restore-rehearsal.mjs",
     "db:drift": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --script --exit-code",
     "db:drift:live": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema --script --exit-code"
   },

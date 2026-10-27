@@ -612,15 +612,23 @@ Use real parallel connections and a helper that holds a transaction open while a
 **Requires:** M13
 
 - [ ] **Select the production hosting provider and verify its compatibility (deployment requirement, Decision 165).** The provider is **not selected** and nothing has been verified. From the provider's official documentation confirm: PostgreSQL 18 or later is offered (`uuidv7()` is core in 18, no extension needed); `pg_trgm` is allowed; advisory locks and `set_config(..., true)` behave correctly behind its connection pooler; backups and a tested restore are possible; S3-compatible private/public bucket policies are possible. Do not deploy to production before this is done.
-- [ ] **Dependency review (deferred from M8, owner decision 2026-10-26):** `npm audit --omit=dev` reported 5 advisories (1 moderate, 4 high) in the scaffold dependencies `@nestjs/core`, `@nestjs/platform-express`, `body-parser`, `multer` and `fast-uri`; none comes from the packages added in M6-M8. Review each advisory against how the application uses it, update to tested versions in a separate change (not mixed with feature work), and re-run the full suite
+- [x] **Dependency review (deferred from M8, owner decision 2026-10-26):** `npm audit --omit=dev` reported 5 advisories (1 moderate, 4 high) in the scaffold dependencies `@nestjs/core`, `@nestjs/platform-express`, `body-parser`, `multer` and `fast-uri`; none comes from the packages added in M6-M8. Review each advisory against how the application uses it, update to tested versions in a separate change (not mixed with feature work), and re-run the full suite
 - [ ] **First CI run on GitHub (open since M3):** the workflow has never run there. Check the PostgreSQL 18.6 service, the `openapi:export` drift step and the full test layers; note that `mail-smtp.integration-spec.ts` skips itself where Mailpit is not running
 - [ ] **Revisit the database pool size** (`TRANSACTION_LIMITS.POOL_MAX`, default 10) against the selected provider's connection limits and pooler (approved 2026-10-25)
-- [ ] Same-site deployment (shared registrable domain or reverse proxy); trusted-proxy config (`TRUST_PROXY` hop count; the rate limiter sees the proxy's IP if it is wrong); `Secure` cookies; validated production environment
-- [ ] S3 bucket policy: private attachments, public avatars/covers
-- [ ] Database backups **and a tested restore** (deleted-message text persists in backups, decision 86)
-- [ ] Runbook: sweeper logs signal a bug; JWT secret rotation logs everyone out; how to create an Admin
-- [ ] Frontend contract notes: share one in-flight refresh; refresh before socket reconnect; render private pages client-side; sort messages by `seq` and detect gaps; render Markdown safely (the server stores it unsanitized; raw HTML disabled or sanitized, no `javascript:` links); send `clientId` as a UUID from `crypto.randomUUID()` and reuse it on every retry of the same message; send `enrollmentPolicy` explicitly when creating a course; treat 503 `SERVICE_UNAVAILABLE` as "try again later"; 401 vs 403 handling (`INVALID_CURRENT_PASSWORD` is 403 by design)
-- [ ] OpenAPI document handed to the frontend
+- [x] Same-site deployment (shared registrable domain or reverse proxy); trusted-proxy config (`TRUST_PROXY` hop count; the rate limiter sees the proxy's IP if it is wrong); `Secure` cookies; validated production environment
+- [x] S3 bucket policy: private attachments, public avatars/covers
+- [x] Database backups **and a tested restore** (deleted-message text persists in backups, decision 86)
+- [x] Runbook: sweeper logs signal a bug; JWT secret rotation logs everyone out; how to create an Admin
+- [x] Frontend contract notes: share one in-flight refresh; refresh before socket reconnect; render private pages client-side; sort messages by `seq` and detect gaps; render Markdown safely (the server stores it unsanitized; raw HTML disabled or sanitized, no `javascript:` links); send `clientId` as a UUID from `crypto.randomUUID()` and reuse it on every retry of the same message; send `enrollmentPolicy` explicitly when creating a course; treat 503 `SERVICE_UNAVAILABLE` as "try again later"; 401 vs 403 handling (`INVALID_CURRENT_PASSWORD` is 403 by design)
+- [x] OpenAPI document handed to the frontend
+
+**Status (2026-10-27):** release-readiness work that does not depend on a provider or on GitHub is **done and verified**; three items are **OPEN** and need the owner or the outside world.
+- **Done:** dependency review (`npm audit` 0 advisories, lockfile-only update in its own commit `fd0ecbf`; CI audit step); production build and start (`npm run smoke:prod`, which found and fixed two start-up logging problems); `.env.example` complete and tested; OpenAPI export consistent (137 operations); migration drift empty; all suites green (unit 554, e2e 57, integration all passed, concurrency loop); runbook, frontend contract notes, known limitations and the deployment sequence in **`docs/release.md`**; the S3 policy specified (applying it needs the provider); the backup and **restore rehearsal tool** run against the test database (25 tables, all row counts equal, `pg_trgm`, `uuidv7()` and the audit trigger intact).
+- **OPEN, needs the owner: the production hosting provider** is not selected, so its PostgreSQL 18, `pg_trgm`, pooler, backup/restore and bucket-policy compatibility (Decision 165) is unverified, and the **pool size** (`POOL_MAX` 10) cannot be compared with a provider's limit. `docs/release.md` section 4 is the checklist.
+- **OPEN, needs GitHub: the first CI run.** Nothing was pushed. The workflow gained the audit, drift, build, smoke and concurrency steps; each was run locally, none on GitHub.
+- **OPEN, needs the provider: a restore on the provider's own backup service**, and applying and testing the bucket policy.
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 18 (**PROPOSED, not yet reviewed**).
+- Still unresolved by decision: the private Vimeo hash (M10b) and the MinIO development store.
 
 ---
 
