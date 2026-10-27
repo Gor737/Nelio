@@ -46,7 +46,9 @@ jobs:
       - run: npm run test:integration
       - run: npm run openapi:export
       - run: git diff --exit-code -- openapi.json
+      - run: npm run db:prepare   # creates the shadow database that db:drift needs (only CREATEs, never drops)
       - run: npm run db:drift
       - run: npm run build
+      - run: npm run db:migrate:deploy   # the smoke test reads categories: the CI database needs the schema (the integration tests build their own nelio_test)
       - run: npm run smoke:prod
       - run: npm run test:concurrency -- 2
