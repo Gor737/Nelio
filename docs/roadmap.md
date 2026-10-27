@@ -602,7 +602,7 @@ Use real parallel connections and a helper that holds a transaction open while a
 - **Drift tests**: `jobs.integration-spec.ts` (13): the schedule, breaking channel membership and a completion then running the job (repair and log), a second run (no change, no log), the three cleanups, and a failing job.
 - **Concurrency loop**: `npm run test:concurrency [-- N]` runs 16 race-bearing specs (423 tests) N times in a row; 5 runs in a row passed. Migration replay and drift: `prisma migrate diff` from the migrations to the schema is empty; the test database is rebuilt from the migrations on every run. Dependency-cruiser: no violations (235 modules).
 - Mutation checks on the job code (12): all caught. Two found gaps that were fixed with tests (a job that bypasses the guard; the AppModule import of the scheduler).
-- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 17 (**PROPOSED, not yet reviewed**; it lists first the new dependency, the two Google endpoints in the STRICT class, the report snapshot in Admin responses, and the widened enrollment route).
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 17 (its four lead items, the new dependency, the two Google endpoints in the STRICT class, the report snapshot exception in Admin responses and the widened enrollment route, were **APPROVED on 2026-10-27**, with the single-instance assumption and the `EXPLAIN` limitation: synthetic tens-of-thousands-row data is a regression guard, not a production-volume benchmark; the rest is still proposed).
 - Open: MinIO development store, the first CI run, `npm audit` (M14), the private Vimeo hash (M10b).
 
 ---
