@@ -1,0 +1,21 @@
+// Progress module: LessonCompletion. Schema group G4 (docs/architecture.md sections 8-10).
+// Same-course guarantee: LessonCompletion carries a course_id and has TWO composite foreign keys that both include it,
+// (enrollment_id, course_id) -> Enrollment(id, course_id) and (lesson_id, course_id) -> Lesson(id, course_id). The enrollment
+// and the lesson therefore belong to the same course, whatever the application does. Both are RESTRICT (completions are
+// history: an enrollment or a lesson that has completions cannot be deleted).
+// No updated_at: a completion row is written once; its timestamp is completed_at.
+// Rules the database cannot enforce (service layer): the lesson is PUBLISHED and the enrollment is ACTIVE at completion time.
+
+model LessonCompletion {
+  enrollmentId String   @map("enrollment_id") @db.Uuid
+  lessonId     String   @map("lesson_id") @db.Uuid
+  courseId     String   @map("course_id") @db.Uuid
+  completedAt  DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+
+  enrollment Enrollment @relation(fields: [enrollmentId, courseId], references: [id, courseId], onDelete: Restrict)
+  lesson     Lesson     @relation(fields: [lessonId, courseId], references: [id, courseId], onDelete: Restrict)
+
+  @@id([enrollmentId, lessonId])
+  @@index([lessonId, courseId])
+  @@map("lesson_completions")
+}

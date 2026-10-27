@@ -1,0 +1,75 @@
+// Moderation module: Block (schema group G1) and Report (schema group G5). Block -> User is CASCADE (section 8); every
+// Report reference is RESTRICT (a reported message and the people involved cannot be deleted while a report exists).
+// Hand-written SQL in the G1 migration: CHECK blocks_no_self_block (blocker_id <> blocked_id).
+// Hand-written SQL in the G5 migration (not expressible here):
+//   CHECK reports_target_shape (exactly one target matching target_type; a MESSAGE report carries the snapshot),
+//   CHECK reports_reviewed_pair, length CHECKs reports_description_length / reports_resolution_note_length (TEXT_LIMITS),
+//   partial unique indexes reports_open_message_unique and reports_open_user_unique (one OPEN report per reporter and target;
+//   a new report is possible after the previous one is resolved).
+
+enum ReportTargetType {
+  MESSAGE
+  USER
+
+  @@map("report_target_type")
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE
+  OTHER
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  ACTIONED
+
+  @@map("report_status")
+}
+
+model Block {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+model Report {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  reporterId      String           @map("reporter_id") @db.Uuid
+  targetType      ReportTargetType @map("target_type")
+  messageId       String?          @map("message_id") @db.Uuid
+  targetUserId    String?          @map("target_user_id") @db.Uuid
+  reason          ReportReason
+  description     String?
+  // Evidence copied at report time (Decision 77): the TEXT of the message body, so it survives a later edit. Everything else
+  // about the message (sender, conversation, seq, time) cannot change and is read from the message row. Required for MESSAGE
+  // reports, absent for USER reports; 1-2000 characters (TEXT_LIMITS.MESSAGE_BODY). Never returned to the reporter.
+  messageSnapshot String?          @map("message_snapshot")
+  status          ReportStatus     @default(OPEN)
+  reviewedBy      String?          @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?        @map("reviewed_at") @db.Timestamptz(6)
+  resolutionNote  String?          @map("resolution_note")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  reporter   User     @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  message    Message? @relation(fields: [messageId], references: [id], onDelete: Restrict)
+  targetUser User?    @relation("ReportTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  reviewer   User?    @relation("ReportReviewer", fields: [reviewedBy], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([messageId])
+  @@index([targetUserId])
+  @@map("reports")
+}

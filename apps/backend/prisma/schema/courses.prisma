@@ -1,0 +1,83 @@
+// Courses module: Course, CourseTeacher. Schema group G2 (docs/architecture.md sections 8-10).
+// Delete behavior (section 8): everything with business meaning is RESTRICT (Course -> Category, -> FileAsset, CourseTeacher ->
+// User, "who and when" pairs); CourseTeacher -> Course is CASCADE (owned data). Courses are deleted only before first
+// publication, in one transaction (lessons, sections, then the course).
+// Hand-written SQL in the G2 migration (not expressible here):
+//   CHECK courses_published_needs_category_summary, courses_non_draft_has_first_published_at, courses_admin_lock_needs_archived,
+//   length CHECKs courses_title_length / courses_summary_length / courses_description_length (TEXT_LIMITS),
+//   partial unique index course_teachers_one_owner (one OWNER per course),
+//   partial index courses_cover_file_id_idx (child side of the cover FK),
+//   the GENERATED ALWAYS definition of search_vector (the column is written by the hand-edited CREATE TABLE).
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+
+  @@map("course_status")
+}
+
+enum EnrollmentPolicy {
+  OPEN
+  APPROVAL_REQUIRED
+  INVITATION_ONLY
+
+  @@map("enrollment_policy")
+}
+
+enum CourseTeacherRole {
+  OWNER
+  ASSISTANT
+
+  @@map("course_teacher_role")
+}
+
+model Course {
+  id               String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  title            String
+  summary          String?
+  description      String?
+  coverFileId      String?                  @map("cover_file_id") @db.Uuid
+  categoryId       String?                  @map("category_id") @db.Uuid
+  status           CourseStatus             @default(DRAFT)
+  enrollmentPolicy EnrollmentPolicy         @map("enrollment_policy")
+  firstPublishedAt DateTime?                @map("first_published_at") @db.Timestamptz(6)
+  archivedAt       DateTime?                @map("archived_at") @db.Timestamptz(6)
+  lockedByAdminAt  DateTime?                @map("locked_by_admin_at") @db.Timestamptz(6)
+  // GENERATED ALWAYS ... STORED in the migration (to_tsvector('simple', title + summary + description)). The dbgenerated()
+  // text must equal what PostgreSQL reports, or Prisma plans an ALTER (Spike A, C4/C5). Read through raw SQL only.
+  searchVector     Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, ((((COALESCE(title, ''::text) || ' '::text) || COALESCE(summary, ''::text)) || ' '::text) || COALESCE(description, ''::text)))")) @map("search_vector")
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  coverFile     FileAsset?      @relation("CourseCover", fields: [coverFileId], references: [id], onDelete: Restrict)
+  teachers      CourseTeacher[]
+  tags          CourseTag[]
+  notifications Notification[]
+  sections      Section[]
+  enrollments   Enrollment[]
+  invitations   Invitation[]
+  conversation  Conversation?
+
+  @@index([status, firstPublishedAt(sort: Desc)])
+  @@index([categoryId])
+  @@index([searchVector], type: Gin)
+  @@map("courses")
+}
+
+model CourseTeacher {
+  courseId  String            @map("course_id") @db.Uuid
+  userId    String            @map("user_id") @db.Uuid
+  role      CourseTeacherRole
+  addedBy   String            @map("added_by") @db.Uuid
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation("TeacherUser", fields: [userId], references: [id], onDelete: Restrict)
+  adder  User   @relation("TeacherAdder", fields: [addedBy], references: [id], onDelete: Restrict)
+
+  @@id([courseId, userId])
+  @@index([userId])
+  @@map("course_teachers")
+}

@@ -1,0 +1,29 @@
+// Files module: FileAsset. Schema group G1. Circular with User (User.avatar_file_id <-> FileAsset.uploaded_by): both tables
+// and both foreign keys are created in the same migration (roadmap M5). Every FileAsset reference is RESTRICT (section 8).
+// Hand-written SQL in the G1 migration: CHECK file_assets_size_positive (size_bytes > 0).
+
+enum FileKind {
+  AVATAR
+  COURSE_COVER
+  LESSON_ATTACHMENT
+
+  @@map("file_kind")
+}
+
+model FileAsset {
+  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  uploadedBy   String   @map("uploaded_by") @db.Uuid
+  kind         FileKind
+  storageKey   String   @unique @map("storage_key")
+  originalName String   @map("original_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    BigInt   @map("size_bytes")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  uploader       User          @relation("FileUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  avatarOfUser   User[]        @relation("UserAvatar")
+  coverOfCourses Course[]      @relation("CourseCover")
+  contentBlock   ContentBlock?
+
+  @@map("file_assets")
+}

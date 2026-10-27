@@ -1,0 +1,11 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../../src/generated/prisma"
+  moduleFormat = "esm"
+  // The generated files import each other as "./x.js" (not "./x.ts"), so tsc (nodenext), Nest build and Jest all accept them.
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}

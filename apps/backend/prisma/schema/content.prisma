@@ -1,0 +1,92 @@
+// Content module: Section, Lesson, ContentBlock. Schema group G3 (docs/architecture.md sections 8-10).
+// Delete behavior (section 8): Section -> Course is CASCADE (the course-deletion transaction deletes lessons, then sections,
+// then the course); Lesson -> Section is RESTRICT (a section with lessons cannot be deleted); ContentBlock -> Lesson is CASCADE;
+// ContentBlock -> FileAsset is RESTRICT. A lesson has no deleted_at: ARCHIVED is its soft state.
+// Same-course guarantee: Section and Lesson are unique on (id, course_id), and Lesson -> Section is a composite foreign key
+// (section_id, course_id), so a lesson can never point at a section of another course. Lesson has no separate FK to Course:
+// the composite key already implies it.
+// There is no unique constraint on (parent, position): reordering sends the full ordered list and rewrites it in one
+// transaction, and reads order by position, id.
+// Hand-written SQL in the G3 migration (not expressible here):
+//   CHECK lessons_published_has_first_published_at, content_blocks_columns_match_type,
+//   length CHECKs sections_title_length / lessons_title_length / content_blocks_text_body_length / content_blocks_video_external_id_length,
+//   partial index lessons_published_course_idx (published lessons per course).
+
+enum LessonStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+
+  @@map("lesson_status")
+}
+
+enum ContentBlockType {
+  TEXT
+  VIDEO
+  FILE
+
+  @@map("content_block_type")
+}
+
+enum VideoProvider {
+  YOUTUBE
+  VIMEO
+
+  @@map("video_provider")
+}
+
+model Section {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  courseId  String   @map("course_id") @db.Uuid
+  title     String
+  position  Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@unique([id, courseId])
+  @@index([courseId, position])
+  @@map("sections")
+}
+
+model Lesson {
+  id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  courseId         String       @map("course_id") @db.Uuid
+  sectionId        String       @map("section_id") @db.Uuid
+  title            String
+  position         Int
+  status           LessonStatus @default(DRAFT)
+  firstPublishedAt DateTime?    @map("first_published_at") @db.Timestamptz(6)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  section     Section            @relation(fields: [sectionId, courseId], references: [id, courseId], onDelete: Restrict)
+  blocks      ContentBlock[]
+  completions LessonCompletion[]
+  visitedBy   Enrollment[]       @relation("LastVisitedLesson")
+
+  @@unique([id, courseId])
+  @@index([sectionId, position])
+  @@map("lessons")
+}
+
+model ContentBlock {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  lessonId        String           @map("lesson_id") @db.Uuid
+  position        Int
+  type            ContentBlockType
+  textBody        String?          @map("text_body")
+  videoProvider   VideoProvider?   @map("video_provider")
+  videoExternalId String?          @map("video_external_id")
+  fileId          String?          @unique @map("file_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lesson Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  file   FileAsset? @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@index([lessonId, position])
+  @@map("content_blocks")
+}

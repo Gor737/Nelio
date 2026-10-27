@@ -1,0 +1,76 @@
+// Enrollments module: Enrollment, Invitation. Schema group G4 (docs/architecture.md sections 8-10).
+// Delete behavior (section 8): everything with business meaning is RESTRICT (Enrollment -> Course/User, Invitation -> Course,
+// "who and when" pairs); Enrollment.last_visited_lesson_id is a convenience pointer, SET NULL. A course with an enrollment or an
+// invitation therefore cannot be deleted (a loud backstop for the "never published" rule).
+// Enrollment is unique on (id, course_id): the target of the same-course composite key of LessonCompletion.
+// "last_visited_lesson_id belongs to the same course" is a service rule (architecture section 9), not a constraint.
+// Hand-written SQL in the G4 migration (not expressible here):
+//   CHECK enrollments_decided_pair, enrollments_completed_needs_first_activated,
+//   partial indexes enrollments_active_incomplete_idx and enrollments_last_visited_lesson_id_idx.
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  LEFT
+  REJECTED
+  REMOVED
+
+  @@map("enrollment_status")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+
+  @@map("invitation_status")
+}
+
+model Enrollment {
+  id                  String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  courseId            String           @map("course_id") @db.Uuid
+  userId              String           @map("user_id") @db.Uuid
+  status              EnrollmentStatus
+  decidedBy           String?          @map("decided_by") @db.Uuid
+  decidedAt           DateTime?        @map("decided_at") @db.Timestamptz(6)
+  firstActivatedAt    DateTime?        @map("first_activated_at") @db.Timestamptz(6)
+  leftAt              DateTime?        @map("left_at") @db.Timestamptz(6)
+  lastVisitedLessonId String?          @map("last_visited_lesson_id") @db.Uuid
+  lastVisitedAt       DateTime?        @map("last_visited_at") @db.Timestamptz(6)
+  completedAt         DateTime?        @map("completed_at") @db.Timestamptz(6)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course            Course             @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  user              User               @relation("EnrollmentStudent", fields: [userId], references: [id], onDelete: Restrict)
+  decider           User?              @relation("EnrollmentDecider", fields: [decidedBy], references: [id], onDelete: Restrict)
+  lastVisitedLesson Lesson?            @relation("LastVisitedLesson", fields: [lastVisitedLessonId], references: [id], onDelete: SetNull)
+  completions       LessonCompletion[]
+
+  @@unique([courseId, userId])
+  @@unique([id, courseId])
+  @@index([courseId, status])
+  @@index([userId, status])
+  @@map("enrollments")
+}
+
+model Invitation {
+  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  courseId      String           @map("course_id") @db.Uuid
+  invitedUserId String           @map("invited_user_id") @db.Uuid
+  invitedBy     String           @map("invited_by") @db.Uuid
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime         @map("expires_at") @db.Timestamptz(6)
+  respondedAt   DateTime?        @map("responded_at") @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  invitedUser User   @relation("InvitationInvitee", fields: [invitedUserId], references: [id], onDelete: Restrict)
+  inviter     User   @relation("InvitationInviter", fields: [invitedBy], references: [id], onDelete: Restrict)
+
+  @@unique([courseId, invitedUserId])
+  @@index([invitedUserId])
+  @@map("invitations")
+}
