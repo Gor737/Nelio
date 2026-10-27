@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ProgressController } from './controllers/progress.controller.js';
+import { CompletionRecheckJob } from './services/completion-recheck.job.js';
 import { CompletionService } from './services/completion.service.js';
 import { ProgressQueries } from './services/progress-queries.js';
 
@@ -9,7 +10,7 @@ import { ProgressQueries } from './services/progress-queries.js';
  */
 @Module({
   controllers: [ProgressController],
-  providers: [CompletionService, ProgressQueries],
+  providers: [CompletionService, ProgressQueries, CompletionRecheckJob],
   exports: [CompletionService, ProgressQueries],
 })
 export class ProgressModule {}

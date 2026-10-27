@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { RealtimeModule } from '../../infrastructure/realtime/index.js';
 import { NotificationsController } from './controllers/notifications.controller.js';
 import { NotificationWriter } from './services/notification-writer.service.js';
+import { NotificationRetentionJob } from './services/notification-retention.job.js';
 import { NotificationRetention } from './services/notification-retention.service.js';
 import { NotificationsListener } from './services/notifications.listener.js';
 import { NotificationsService } from './services/notifications.service.js';
@@ -18,6 +19,7 @@ import { NotificationsService } from './services/notifications.service.js';
     NotificationsListener,
     NotificationsService,
     NotificationRetention,
+    NotificationRetentionJob,
   ],
 })
 export class NotificationsModule {}

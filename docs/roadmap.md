@@ -578,24 +578,32 @@ Use real parallel connections and a helper that holds a transaction open while a
 
 **Requires:** M12 · **Unblocks:** M14
 
-- [ ] Wire `@nestjs/schedule`: cleanup jobs (Auth tokens, Files orphans, Notification retention) and nightly sweepers (Chat channel reconcile, Progress full recheck); document single-instance assumption (decision 162)
-- [ ] Drift tests: break channel membership and a completion, run sweeper, assert repair **and** log entry; second run changes nothing
+- [x] Wire `@nestjs/schedule`: cleanup jobs (Auth tokens, Files orphans, Notification retention) and nightly sweepers (Chat channel reconcile, Progress full recheck); document single-instance assumption (decision 162)
+- [x] Drift tests: break channel membership and a completion, run sweeper, assert repair **and** log entry; second run changes nothing
 
 **Conformance suites (generated from M4 files):**
-- [ ] Permission matrix: every endpoint × role/relationship → exact outcome and status
-- [ ] Error registry: every code reachable by a test; status matches registry
-- [ ] Check order (`429 → 401 → 403 ACCOUNT_SUSPENDED → guards → 400 → 409`) on sample endpoints
-- [ ] Mass assignment: every request DTO rejects unknown fields
-- [ ] Leak scan: no `email` outside `/me` and Admin, no `password_hash`, `token_hash`, `message_snapshot` or deleted-message body in responses
-- [ ] Full Phase 9 concurrency suite, looped to expose flakiness
-- [ ] `EXPLAIN` checks: unread notifications, history by `seq`, active members, completion recheck, file-reference check
-- [ ] Final dependency-cruiser run, migration replay/drift check, Swagger completeness
+- [x] Permission matrix: every endpoint × role/relationship → exact outcome and status
+- [x] Error registry: every code reachable by a test; status matches registry
+- [x] Check order (`429 → 401 → 403 ACCOUNT_SUSPENDED → guards → 400 → 409`) on sample endpoints
+- [x] Mass assignment: every request DTO rejects unknown fields
+- [x] Leak scan: no `email` outside `/me` and Admin, no `password_hash`, `token_hash`, `message_snapshot` or deleted-message body in responses
+- [x] Full Phase 9 concurrency suite, looped to expose flakiness
+- [x] `EXPLAIN` checks: unread notifications, history by `seq`, active members, completion recheck, file-reference check
+- [x] Final dependency-cruiser run, migration replay/drift check, Swagger completeness
 
 **Security pass:**
-- [ ] Cookie flags, CORS, Helmet
-- [ ] Origin checks on refresh, logout and socket handshake
-- [ ] Log redaction
-- [ ] Correct rate-limit class on every endpoint
+- [x] Cookie flags, CORS, Helmet
+- [x] Origin checks on refresh, logout and socket handshake
+- [x] Log redaction
+- [x] Correct rate-limit class on every endpoint
+
+**Status (2026-10-27):** implemented and verified. `@nestjs/schedule` 12.0.2 (exact pin) is imported once in `AppModule`; five jobs, each in its own module and run through `runGuarded` (no overlap, failures logged by name): Auth cleanup 03:10, file cleanup 03:20, notification retention 03:30, channel reconcile 03:40, completion recheck 03:50 UTC (`common/constants/job-schedule.ts`). The single-instance assumption is documented there and in the architecture. Both sweepers log when they repair; a second run changes nothing and logs nothing.
+- **Conformance suites** (`test/conformance/`, generated from the route metadata and the M4 constants): `permission-matrix` (every route classified; every course route x 9 relationships x 5 course states, every role route x 4 role combinations, against an independent oracle), `error-registry` (a reproducer for each of the 37 codes in a `Record<ErrorCode, ...>`), `check-order`, `mass-assignment` (every body and query DTO of every route), `leak-scan` (every GET route as 7 kinds of caller), `openapi` (routes and operations are the same set; schemas, security, errors, static leak scan), `explain` (five hot queries on tens of thousands of rows), `security` (Helmet, CORS, cookie, Origin on refresh/logout/socket, log redaction, rate-limit class of every route and the real limits).
+- **Drift tests**: `jobs.integration-spec.ts` (13): the schedule, breaking channel membership and a completion then running the job (repair and log), a second run (no change, no log), the three cleanups, and a failing job.
+- **Concurrency loop**: `npm run test:concurrency [-- N]` runs 16 race-bearing specs (423 tests) N times in a row; 5 runs in a row passed. Migration replay and drift: `prisma migrate diff` from the migrations to the schema is empty; the test database is rebuilt from the migrations on every run. Dependency-cruiser: no violations (235 modules).
+- Mutation checks on the job code (12): all caught. Two found gaps that were fixed with tests (a job that bypasses the guard; the AppModule import of the scheduler).
+- Recorded choices where the documents are silent: `docs/proposed-defaults.md` section 17 (**PROPOSED, not yet reviewed**; it lists first the new dependency, the two Google endpoints in the STRICT class, the report snapshot in Admin responses, and the widened enrollment route).
+- Open: MinIO development store, the first CI run, `npm audit` (M14), the private Vimeo hash (M10b).
 
 ---
 

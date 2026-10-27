@@ -84,7 +84,7 @@ export class EmailTokensService {
        WHERE user_id = ${userId}::uuid AND type = ${type}::email_token_type AND used_at IS NULL`;
   }
 
-  /** Deletes tokens that expired or were used more than a day ago, in batches. A callable method; the schedule is M13. */
+  /** Deletes tokens that expired or were used more than a day ago, in batches. Run nightly by `AuthCleanupJob`. */
   async cleanupExpired(batch = 1000): Promise<number> {
     let total = 0;
     for (;;) {

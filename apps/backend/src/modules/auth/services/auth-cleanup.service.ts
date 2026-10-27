@@ -5,7 +5,7 @@ import { SessionsService } from './sessions.service.js';
 /**
  * The expired-token cleanup (roadmap M11a, architecture section 17): refresh tokens that expired more than a day ago and email tokens that
  * expired or were used more than a day ago. Nothing the application still needs is removed (the newest-token cooldown and reuse detection
- * only look at recent rows). A callable method; the nightly schedule is wired in M13.
+ * only look at recent rows). Run nightly by `AuthCleanupJob`.
  */
 @Injectable()
 export class AuthCleanupService {

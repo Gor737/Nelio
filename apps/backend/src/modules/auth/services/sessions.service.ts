@@ -148,7 +148,7 @@ export class SessionsService {
     await this.accounts.setTokensValidAfter(tx, userId);
   }
 
-  /** Deletes refresh tokens that expired more than a day ago, in batches. A callable method; the schedule is M13. */
+  /** Deletes refresh tokens that expired more than a day ago, in batches (nightly, `AuthCleanupJob`). */
   async cleanupExpired(batch = 1000): Promise<number> {
     let total = 0;
     for (;;) {

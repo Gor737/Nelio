@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MailModule } from '../../infrastructure/mail/index.js';
 import { UsersModule } from '../users/index.js';
 import { AuthController } from './controllers/auth.controller.js';
+import { AuthCleanupJob } from './services/auth-cleanup.job.js';
 import { AuthCleanupService } from './services/auth-cleanup.service.js';
 import { AuthService } from './services/auth.service.js';
 import { EmailTokensService } from './services/email-tokens.service.js';
@@ -30,6 +31,7 @@ import { TokenIssuer } from './services/token-issuer.service.js';
     AuthService,
     GoogleAuthService,
     AuthCleanupService,
+    AuthCleanupJob,
     { provide: GoogleTokenVerifier, useClass: GoogleLibraryVerifier },
   ],
   exports: [SessionsService, AuthCleanupService, PasswordService],

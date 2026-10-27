@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthCoreModule } from './common/auth-core.module.js';
 import { GLOBAL_PROVIDERS } from './common/global-providers.js';
 import { HealthModule } from './infrastructure/health/index.js';
@@ -32,6 +33,8 @@ import { UsersModule } from './modules/users/index.js';
     MailModule,
     EventsModule,
     RealtimeModule,
+    // The nightly jobs (cleanups and safety-net sweepers): in-process, so single instance only (Decision 162, JOB_SCHEDULE)
+    ScheduleModule.forRoot(),
     // Layer 0
     FilesModule,
     CatalogModule,

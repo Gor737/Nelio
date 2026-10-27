@@ -113,7 +113,7 @@ export class CourseChannelService {
 
   /**
    * The nightly safety net (Decision 162): re-syncs every course that has a channel, each in its own short transaction under Course-X.
-   * A callable method; the schedule is wired in M13. Logs only when it repaired something. One course failing does not stop the others.
+   * Scheduled nightly by `ChannelReconcileJob`. Logs only when it repaired something. One course failing does not stop the others.
    */
   async reconcileAll(): Promise<ChannelSyncResult & { courses: number }> {
     const courses = await this.prisma.$queryRaw<{ course_id: string }[]>`

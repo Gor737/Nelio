@@ -1,3 +1,4 @@
+import { ChannelReconcileJob } from './services/channel-reconcile.job.js';
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../../infrastructure/audit/index.js';
 import { RealtimeModule } from '../../infrastructure/realtime/index.js';
@@ -32,6 +33,7 @@ import { MessagesService } from './services/messages.service.js';
     MembersService,
     MessagesService,
     CourseChannelService,
+    ChannelReconcileJob,
     ChatDeliveryService,
     PresenceService,
     TypingService,

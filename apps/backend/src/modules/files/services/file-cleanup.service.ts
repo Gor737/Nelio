@@ -21,7 +21,7 @@ const BATCH = 100;
 
 /**
  * The orphan cleanup job (docs/architecture.md section 16, roadmap M9a): files older than 24 hours that nothing references (not an
- * avatar, a cover or a block attachment) are deleted. It is a plain service method; M13 schedules it nightly (single instance,
+ * avatar, a cover or a block attachment) are deleted. `FileCleanupJob` runs it nightly (single instance,
  * Decision 162). It reads the three referencing tables directly, as the architecture allows (reads may cross modules).
  *
  * The foreign keys make it safe against a concurrent attach: the DELETE needs a lock that an attach (an UPDATE or INSERT that

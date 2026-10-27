@@ -131,7 +131,7 @@ export class CompletionService {
 
   /**
    * The nightly full recheck (safety net for a path that forgot a trigger): every course that has an ACTIVE incomplete enrollment is
-   * re-checked in its own short transaction under Course-S. A callable method; the schedule is wired in M13. One course failing is
+   * re-checked in its own short transaction under Course-S (scheduled nightly by `CompletionRecheckJob`). Logs when it repaired something. One course failing is
    * logged and does not stop the others.
    */
   async recheckAllCourses(): Promise<{
@@ -159,6 +159,11 @@ export class CompletionService {
         );
       }
     }
+    if (enrollmentsCompleted > 0)
+      this.logger.warn({
+        event: 'completion_recheck_repaired',
+        enrollmentsCompleted,
+      });
     return { coursesChecked, enrollmentsCompleted };
   }
 }

@@ -755,7 +755,7 @@ Chat messages are never notification rows; unread uses read positions. Notificat
 
 ### Safety-net jobs (nightly, single instance, log when they repair)
 
-Channel reconcile (Chat), full completion recheck (Progress). Cleanup jobs: expired tokens (Auth), orphan files (Files), notification retention (Notifications). Scheduled with `@nestjs/schedule`; safe only because v1 runs one instance. Not exposed as Admin endpoints.
+Channel reconcile (Chat), full completion recheck (Progress). Cleanup jobs: expired tokens (Auth), orphan files (Files), notification retention (Notifications). Scheduled with `@nestjs/schedule` at 03:10 (Auth), 03:20 (Files), 03:30 (Notifications), 03:40 (Chat) and 03:50 (Progress) UTC, each through a guard that skips an overlapping run and logs a failure by name; safe only because v1 runs one instance. Not exposed as Admin endpoints.
 
 ### Channel membership sync
 

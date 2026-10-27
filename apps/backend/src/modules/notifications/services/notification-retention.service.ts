@@ -6,7 +6,7 @@ const DELETE_BATCH = 1000;
 
 /**
  * Retention: a notification that was READ more than 90 days ago is deleted (Decision 75). Unread ones are never deleted, and a recently
- * read old notification stays until 90 days after it was read. A callable method; the nightly schedule is wired in M13. Deletes in
+ * read old notification stays until 90 days after it was read. Run nightly by `NotificationRetentionJob`. Deletes in
  * batches so one run never holds a long lock.
  */
 @Injectable()

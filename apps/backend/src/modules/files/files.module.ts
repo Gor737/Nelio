@@ -3,6 +3,7 @@ import {
   FilesController,
   UploadTooLargeInterceptor,
 } from './controllers/files.controller.js';
+import { FileCleanupJob } from './services/file-cleanup.job.js';
 import { FileCleanupService } from './services/file-cleanup.service.js';
 import { FilesService } from './services/files.service.js';
 import { S3StorageDriver } from './storage/s3-storage.driver.js';
@@ -18,6 +19,7 @@ import { StorageDriver } from './storage/storage-driver.js';
     { provide: StorageDriver, useClass: S3StorageDriver },
     FilesService,
     FileCleanupService,
+    FileCleanupJob,
     UploadTooLargeInterceptor,
   ],
   exports: [FilesService, FileCleanupService],
