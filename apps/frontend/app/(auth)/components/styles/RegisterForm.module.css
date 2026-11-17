@@ -1,0 +1,215 @@
+.form,
+.success {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.input:-webkit-autofill {
+  -webkit-text-fill-color: var(--ink);
+  box-shadow: 0 0 0 100px var(--tint) inset;
+}
+
+.input:hover {
+  border-color: #c9c1dc;
+}
+
+.input:focus,
+.input:focus-visible {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px var(--tint2);
+}
+
+.input:-webkit-autofill:focus {
+  box-shadow:
+    0 0 0 100px var(--tint) inset,
+    0 0 0 4px var(--tint2);
+}
+
+/* Error state: the field has an error message below its input */
+.field:has(.error) .input {
+  border-color: var(--red);
+}
+
+.field:has(.error) .input:focus,
+.field:has(.error) .input:focus-visible {
+  box-shadow: 0 0 0 4px var(--color-danger-ring);
+}
+
+.error {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--red);
+}
+
+/* General (root) error shown above the fields */
+.form > .error {
+  padding: 12px 14px;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 14px;
+  background: var(--red-tint);
+  font-size: 14px;
+}
+
+.button {
+  width: 100%;
+  height: 52px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--r-control);
+  background: var(--grad);
+  color: #fff;
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 700;
+  box-shadow: var(--shadow-primary);
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.05s ease;
+}
+
+.button:hover:not(:disabled) {
+  box-shadow: 0 10px 24px -8px rgba(124, 58, 237, 0.7);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  background: #f1eff5;
+  color: #7a778a;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* "Check your email" screen */
+.success {
+  align-items: center;
+  text-align: center;
+}
+
+.successIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--tint);
+  color: var(--violet);
+}
+
+.text {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.link {
+  border-radius: 6px;
+  color: var(--violet-d);
+  font-weight: 700;
+}
+
+.link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+.footerText {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .button {
+    transition: none;
+  }
+}
+
+/* "or" line between the submit button and the Google button */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line2);
+}

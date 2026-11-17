@@ -1,0 +1,515 @@
+/* Same 1232px container as the catalog */
+.page {
+  min-height: calc(100vh - 68px);
+  padding-block: var(--space-6) var(--space-16);
+  padding-inline: max(var(--space-4), calc((100% - 1232px) / 2));
+  background: var(--bg);
+}
+
+/* ---------- Back link ---------- */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+
+.back:hover {
+  color: var(--violet-d);
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 3px;
+}
+
+.course {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-8);
+  align-items: center;
+  padding: 36px;
+  border-radius: var(--r-card);
+  background: var(--grad);
+  color: #fff;
+  box-shadow: 0 24px 50px -26px rgba(124, 58, 237, 0.65);
+}
+
+.heroCircle {
+  position: absolute;
+  z-index: -1;
+  top: -180px;
+  left: 38%;
+  width: 460px;
+  height: 460px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.category {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding-inline: 12px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* category can be null: don't show an empty pill */
+.category:empty,
+.pills:not(:has(:not(:empty))) {
+  display: none;
+}
+
+.title {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  margin: 0;
+  max-width: 640px;
+  font-size: 17px;
+  line-height: 1.6;
+  opacity: 0.92;
+}
+
+.summary:empty {
+  display: none;
+}
+
+/* Teacher */
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--space-2);
+}
+
+.avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--violet);
+  box-shadow: 0 6px 16px -8px rgba(23, 21, 31, 0.45);
+}
+
+.ownerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ownerLabel {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.ownerName {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Right column of the hero: white card with cover + enroll slot */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 24px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 20px 40px -20px rgba(23, 21, 31, 0.35);
+}
+
+.cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 16 / 9;
+  padding: 16px 20px;
+  border-radius: var(--r-cover);
+  background: linear-gradient(135deg, #7c3aed, #c026d3);
+}
+
+.cover::before,
+.cover::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.cover::before {
+  top: -40%;
+  right: -12%;
+  width: 62%;
+  aspect-ratio: 1;
+}
+
+.cover::after {
+  right: 28%;
+  bottom: -38%;
+  width: 40%;
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.letter {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(23, 21, 31, 0.15);
+}
+
+/* Where the Enroll button will go; collapses while empty */
+.enrollSlot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.enrollSlot:empty {
+  display: none;
+}
+
+/* ---------- Content below the hero ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+/* Two columns as soon as the aside gets content */
+.layout:has(.aside:not(:empty)) {
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.aside:empty {
+  display: none;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.about {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--space-3);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.description {
+  margin: 0;
+  line-height: 1.75;
+  color: var(--muted);
+  white-space: pre-line;
+}
+
+/* ---------- Generic error ---------- */
+.state {
+  margin: 0;
+  padding: var(--space-12) var(--space-4);
+  border: 1px dashed var(--line2);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  text-align: center;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.error {
+  border: 1px solid var(--color-danger-border);
+  background: var(--red-tint);
+  font-weight: 600;
+  color: var(--red);
+}
+
+/* ---------- Not found ---------- */
+.notFound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 480px;
+  margin: var(--space-12) auto 0;
+  padding: 40px 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+
+.notFoundIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-2);
+  border-radius: 20px;
+  background: var(--tint);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--violet);
+}
+
+.notFoundTitle {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.notFoundText {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin-top: var(--space-3);
+  padding-inline: 22px;
+  border-radius: var(--r-control);
+  background: var(--grad);
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+  transition: box-shadow 0.15s ease;
+}
+
+.primaryLink:hover {
+  box-shadow: 0 10px 24px -8px rgba(124, 58, 237, 0.7);
+}
+
+.primaryLink:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+/* ---------- Loading skeleton ---------- */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: 40px;
+}
+
+.skeletonHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-8);
+  align-items: center;
+  padding: 36px;
+  border-radius: var(--r-card);
+  background: #ece9f2;
+}
+
+.skeletonText {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skeletonPill,
+.skeletonTitle,
+.skeletonLine,
+.skeletonLineShort,
+.skeletonCover,
+.skeletonCard {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e2deea 0%, #f1eef6 50%, #e2deea 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonPill {
+  width: 96px;
+  height: 28px;
+  border-radius: var(--r-pill);
+}
+
+.skeletonTitle {
+  width: 80%;
+  height: 40px;
+}
+
+.skeletonLine {
+  width: 100%;
+  height: 16px;
+}
+
+.skeletonLineShort {
+  width: 60%;
+  height: 16px;
+}
+
+.skeletonCover {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-card);
+}
+
+.skeletonCard {
+  height: 180px;
+  border-radius: var(--r-card);
+  background-color: #fff;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* ---------- Tablet / phone ---------- */
+@media (max-width: 900px) {
+  .hero,
+  .skeletonHero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .layout:has(.aside:not(:empty)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 24px 20px;
+  }
+
+  .skeletonHero {
+    padding: 24px 20px;
+  }
+
+  .title {
+    font-size: 30px;
+  }
+
+  .summary {
+    font-size: 15px;
+  }
+
+  .about {
+    padding: 20px;
+  }
+
+  .notFound {
+    margin-top: var(--space-6);
+    padding: 32px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back,
+  .primaryLink {
+    transition: none;
+  }
+
+  .skeletonPill,
+  .skeletonTitle,
+  .skeletonLine,
+  .skeletonLineShort,
+  .skeletonCover,
+  .skeletonCard {
+    animation: none;
+  }
+}

@@ -1,0 +1,225 @@
+/* Row card: cover | info | action */
+.card {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--line2);
+  box-shadow: var(--shadow-lift);
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 3px;
+}
+
+/* ---------- Cover ---------- */
+.cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 16 / 9;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #7c3aed, #c026d3);
+}
+
+.cover::before,
+.cover::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.cover::before {
+  top: -40%;
+  right: -12%;
+  width: 62%;
+  aspect-ratio: 1;
+}
+
+.cover::after {
+  right: 28%;
+  bottom: -38%;
+  width: 40%;
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* If a real cover image is added later */
+.cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Same 6 gradients as the catalog, cycled by position */
+.card:nth-child(6n + 2) .cover { background: linear-gradient(135deg, #2563eb, #7c3aed); }
+.card:nth-child(6n + 3) .cover { background: linear-gradient(135deg, #0d9488, #2563eb); }
+.card:nth-child(6n + 4) .cover { background: linear-gradient(135deg, #db2777, #f97316); }
+.card:nth-child(6n + 5) .cover { background: linear-gradient(135deg, #9333ea, #db2777); }
+.card:nth-child(6n + 6) .cover { background: linear-gradient(135deg, #ea580c, #be123c); }
+
+.letter {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(23, 21, 31, 0.15);
+}
+
+/* ---------- Info ---------- */
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Text comes from enroll.status (e.g. ACTIVE); shown as "Active" */
+.status {
+  display: inline-block; /* block container, so ::first-letter works */
+  height: 24px;
+  line-height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  background: var(--tint);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: lowercase;
+  color: var(--violet-d);
+}
+
+.status::first-letter {
+  text-transform: uppercase;
+}
+
+/* Per-status colour from the data-status attribute on the card */
+.card[data-status="ACTIVE"] .status { background: var(--green-tint); color: var(--green); }
+.card[data-status="PENDING"] .status { background: var(--amber-tint); color: var(--amber); }
+.card[data-status="REMOVED"] .status { background: var(--red-tint); color: var(--red); }
+.card[data-status="LEFT"] .status,
+.card[data-status="REJECTED"] .status { background: #f1eff5; color: #7a778a; }
+
+.title {
+  overflow: hidden;
+  max-width: 100%;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: #efebf7;
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad);
+  transition: width 0.4s ease;
+}
+
+.progressText {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ---------- Action (the whole card is the link; this only looks like a button) ---------- */
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: var(--r-control);
+  background: var(--grad);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: var(--shadow-primary);
+  transition: box-shadow 0.15s ease;
+}
+
+.card:hover .action {
+  box-shadow: 0 10px 24px -8px rgba(124, 58, 237, 0.7);
+}
+
+.action svg {
+  transition: transform 0.15s ease;
+}
+
+.card:hover .action svg {
+  transform: translateX(3px);
+}
+
+/* ---------- Phone: stack ---------- */
+@media (max-width: 640px) {
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .letter {
+    font-size: 40px;
+  }
+
+  .progress {
+    max-width: none;
+  }
+
+  .title {
+    white-space: normal;
+  }
+
+  .action {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .bar,
+  .action,
+  .action svg {
+    transition: none;
+  }
+}
