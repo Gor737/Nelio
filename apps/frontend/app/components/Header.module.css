@@ -1,0 +1,252 @@
+/* Top bar: 68px, translucent white, content limited to 1232px */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 68px;
+  padding-inline: max(var(--space-4), calc((100% - 1232px) / 2));
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--r-control);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.logoMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: var(--grad);
+  box-shadow: var(--shadow-primary);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.logo:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 3px;
+}
+
+/* "My learning" nav pill, right after the logo */
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  margin-right: auto;
+  margin-left: 12px;
+  padding: 0 14px;
+  border-radius: var(--r-control);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.navLink:hover {
+  background: var(--tint);
+  color: var(--violet-d);
+}
+
+.navLink:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: var(--text-small);
+  color: var(--muted);
+}
+
+/* Bell link to /notifications (badge sits on its top-right corner) */
+.iconLink {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--ink2);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.iconLink:hover {
+  background: var(--tint);
+  color: var(--violet-d);
+}
+
+.iconLink:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--grad);
+  box-shadow: 0 0 0 2px #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  color: #fff;
+  text-align: center;
+}
+
+/* Avatar + name */
+.user {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--grad);
+  color: #fff;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--line2);
+}
+
+/* Real avatar photo inside the gradient circle */
+.avatar {
+  overflow: hidden;
+}
+
+.avatarImg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+}
+
+.userName {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Pill buttons, shared by links and <button> */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s,
+    box-shadow 0.15s, transform 0.05s;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+.primary {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+
+.primary:hover {
+  box-shadow: 0 8px 22px -6px rgba(124, 58, 237, 0.7);
+}
+
+.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink2);
+}
+
+.ghost:hover {
+  background: var(--tint);
+  color: var(--violet-d);
+}
+
+@media (max-width: 480px) {
+  .navLink {
+    margin-left: 0;
+    padding: 0 10px;
+  }
+
+  .userName {
+    display: none;
+  }
+
+  .btn {
+    padding: 0 14px;
+  }
+}
+
+/* Very narrow phones: keep only the "N" mark so the logged-in bar fits */
+@media (max-width: 400px) {
+  .logo {
+    gap: 0;
+    font-size: 0;
+  }
+
+  .logoMark {
+    font-size: 1.05rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}

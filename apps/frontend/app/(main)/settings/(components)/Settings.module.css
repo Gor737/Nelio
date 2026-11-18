@@ -1,0 +1,490 @@
+/* Same container as the other pages, a bit narrower */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-height: calc(100vh - 68px);
+  padding-block: 32px 64px;
+  padding-inline: max(24px, calc((100% - 1100px) / 2));
+  background: var(--bg);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* Nav | cards */
+.layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* ---------- Left nav ---------- */
+.nav {
+  position: sticky;
+  top: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--r-control);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.navLink:hover {
+  background: var(--tint);
+  color: var(--violet-d);
+}
+
+.navLink:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 1px;
+}
+
+/* ---------- Cards ---------- */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  scroll-margin-top: 88px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* Avatar: gradient circle with the initial; the img covers it when it has a real src */
+.avatarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--grad);
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 5px var(--line2);
+}
+
+.avatarImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+
+/* ---------- Form ---------- */
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input::placeholder {
+  color: var(--ink2);
+}
+
+.input:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px var(--tint2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.saved {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.primaryButton:disabled {
+  background: #f1eff5;
+  color: #7a778a;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Label/text on the left, button on the right */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.cardTitle + .row {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.row .cardTitle {
+  flex: 1;
+}
+
+.rowText {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.danger {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+/* ---------- Buttons ---------- */
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.primaryButton {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+
+.primaryButton:hover {
+  box-shadow: 0 10px 24px -8px rgba(124, 58, 237, 0.7);
+}
+
+.secondaryButton {
+  border-color: var(--line2);
+  background: var(--surface);
+  color: var(--ink2);
+}
+
+.secondaryButton:hover {
+  border-color: var(--violet);
+  color: var(--violet-d);
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+/* Read-only field (email) */
+.input[readonly] {
+  border-color: var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: default;
+}
+
+.input[readonly]:focus {
+  border-color: var(--line2);
+  box-shadow: none;
+}
+
+/* ---------- State (loading / guest / error) ---------- */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  max-width: 520px;
+  min-height: 160px;
+  margin: 48px auto;
+  margin-inline: max(16px, calc((100% - 520px) / 2));
+  padding: 32px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+
+.stateError {
+  border-color: #f8cfcf;
+  background: #fef1f1;
+  color: #b91c1c;
+}
+
+.stateText {
+  margin: 0;
+}
+
+/* ---------- Phone ---------- */
+@media (max-width: 760px) {
+  .page {
+    gap: 20px;
+    padding-block: 20px 48px;
+    padding-inline: 16px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .navLink {
+    flex-shrink: 0;
+  }
+
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navLink,
+  .input,
+  .primaryButton,
+  .secondaryButton {
+    transition: none;
+  }
+}
+
+/* ---------- Added for upload / password / teaching ---------- */
+.textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  resize: vertical;
+  outline: none;
+}
+
+.textarea:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px var(--tint2);
+}
+
+.errorText {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--red);
+}
+
+.muted {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Plain text button (Remove photo, Cancel) */
+.textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.textButton:hover {
+  color: var(--violet-d);
+}
+
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid #f8cfcf;
+  border-radius: var(--r-control);
+  background: var(--red-tint);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--red);
+  cursor: pointer;
+}
+
+.dangerButton:hover {
+  border-color: var(--red);
+}
+
+.secondaryButton:disabled,
+.dangerButton:disabled,
+.textButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* "Are you sure? [Yes] Cancel" */
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirmText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+/* Teaching status pill */
+.badge {
+  align-self: flex-start;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.badgeSuccess {
+  background: var(--green-tint);
+  color: var(--green);
+}
+
+.badgePending {
+  background: var(--amber-tint);
+  color: var(--amber);
+}

@@ -1,0 +1,251 @@
+/* Narrower column than the catalog: a list reads better at ~760px */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: calc(100vh - 68px);
+  padding-block: 32px 64px;
+  padding-inline: max(24px, calc((100% - 760px) / 2));
+  background: var(--bg);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------- Guest / empty ---------- */
+.emptyBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 40px;
+  border: 1.5px dashed var(--line2);
+  border-radius: 20px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.emptyText {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: var(--r-control);
+  background: var(--grad);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+
+.primaryLink:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+/* ---------- Error ---------- */
+.errorBox {
+  padding: 14px 16px;
+  border: 1px solid #f8cfcf;
+  border-radius: 14px;
+  background: #fef1f1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+/* ---------- Loading skeleton (shaped like NotificationItem) ---------- */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.skeletonLines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeletonAvatar,
+.skeletonTitle,
+.skeletonText {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ece9f2 0%, #f6f4fa 50%, #ece9f2 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.skeletonTitle {
+  width: 70%;
+  height: 14px;
+}
+
+.skeletonText {
+  width: 40%;
+  height: 12px;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (max-width: 640px) {
+  .page {
+    gap: 20px;
+    padding-block: 20px 48px;
+    padding-inline: 16px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .emptyBox {
+    padding: 28px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonAvatar,
+  .skeletonTitle,
+  .skeletonText {
+    animation: none;
+  }
+}
+
+/* ---------- Title row: heading left, "Mark all as read" right ---------- */
+.headRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.markAllBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--violet-d);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.markAllBtn:hover:not(:disabled) {
+  border-color: var(--tint2);
+  background: var(--tint);
+}
+
+.markAllBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.markAllBtn:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+/* Previous list fades while a new filter loads */
+.list[data-busy="true"] {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+/* ---------- Load more ---------- */
+.loadMoreBtn {
+  align-self: center;
+  height: 42px;
+  padding: 0 22px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--violet-d);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.loadMoreBtn:hover:not(:disabled) {
+  border-color: var(--tint2);
+  background: var(--tint);
+}
+
+.loadMoreBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.loadMoreBtn:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}

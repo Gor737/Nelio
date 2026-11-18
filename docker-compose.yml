@@ -21,5 +21,25 @@ services:
       - "1025:1025"
       - "8025:8025"
 
+  # Development S3-compatible file store (Files module: avatars, course covers, lesson attachments).
+  # Dev only (roadmap M9a): official SeaweedFS image, pinned. The backend's dev defaults already match:
+  # endpoint http://127.0.0.1:9000, bucket nelio-files, path-style, credentials = MINIO_ROOT_USER / MINIO_ROOT_PASSWORD.
+  # Anonymous read is limited to the bucket's public/ prefix (avatars, covers); attachments need signed URLs.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.09
+    ports:
+      - "9000:8333"
+    environment:
+      S3_DEV_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_DEV_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        printf '%s' "{\"identities\":[{\"name\":\"nelio-dev\",\"credentials\":[{\"accessKey\":\"$${S3_DEV_ACCESS_KEY}\",\"secretKey\":\"$${S3_DEV_SECRET_KEY}\"}],\"actions\":[\"Admin\",\"Read\",\"Write\",\"List\",\"Tagging\"]},{\"name\":\"anonymous\",\"actions\":[\"Read:nelio-files/public\"]}]}" > /tmp/s3.json
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json -volume.max=0
+    volumes:
+      - seaweedfs_data:/data
+
 volumes:
   postgres_data:
+  seaweedfs_data:

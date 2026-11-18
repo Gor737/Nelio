@@ -1,0 +1,109 @@
+/* Search box on top of the sidebar; results drop below it */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-inline: 4px;
+}
+
+.input {
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px var(--tint2);
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+  list-style: none;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.person:hover:not(:disabled) {
+  background: var(--tint);
+}
+
+.person:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.person:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 1px;
+}
+
+.avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: var(--grad);
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  padding: 10px;
+  font-size: 13.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+}

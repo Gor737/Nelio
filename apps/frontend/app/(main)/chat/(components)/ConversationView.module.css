@@ -1,0 +1,136 @@
+/* Header | scrolling messages | (input in step 3) */
+.view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.back {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 18px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--grad);
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 18px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.hint {
+  margin: auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.readOnly {
+  margin: 0;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Online dot: wrap the avatar in .avatarBox, put .onlineDot inside it */
+.avatarBox {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.onlineDot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 13px;
+  height: 13px;
+  border: 2.5px solid var(--surface);
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+/* "typing…" / "Online" in violet */
+.sub[data-live="true"] {
+  font-weight: 700;
+  color: var(--violet-d);
+}

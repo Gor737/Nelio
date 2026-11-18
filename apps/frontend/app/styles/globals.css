@@ -1,0 +1,118 @@
+:root {
+  /* ---- Nelio "Soft violet" palette ---- */
+  --bg: #f7f5fb;
+  --surface: #fff;
+  --ink: #17151f;
+  --ink2: #3f3c4d;
+  --muted: #6b6880;
+  --line: #ebe7f3;
+  --line2: #ddd7ea;
+  --violet: #7c3aed;
+  --violet-d: #6d28d9;
+  --tint: #f3eefe;
+  --tint2: #e9defd;
+  --pink: #db2777;
+  --grad: linear-gradient(135deg, #7c3aed 0%, #c026d3 55%, #db2777 100%);
+
+  --green: #15803d;
+  --green-tint: #ecfdf3;
+  --amber: #b45309;
+  --amber-tint: #fff7e8;
+  --red: #b91c1c;
+  --red-tint: #fef1f1;
+
+  /* Radius */
+  --r-control: 12px;
+  --r-cover: 16px;
+  --r-card: 22px;
+  --r-pill: 999px;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 2px rgba(23, 21, 31, 0.03),
+    0 10px 30px -12px rgba(23, 21, 31, 0.08);
+  --shadow-lift: 0 1px 2px rgba(23, 21, 31, 0.04),
+    0 18px 40px -14px rgba(23, 21, 31, 0.16);
+  --shadow-primary: 0 6px 18px -6px rgba(124, 58, 237, 0.55);
+
+  /* ---- Legacy token names, mapped to the new palette ---- */
+  --color-primary: var(--violet);
+  --color-primary-hover: var(--violet-d);
+  --color-primary-tint-1: var(--tint);
+  --color-primary-tint-2: var(--tint2);
+  --color-primary-ring: var(--tint2);
+
+  --gray-50: var(--bg);
+  --gray-100: #f1eff5;
+  --gray-200: var(--line);
+  --gray-300: var(--line2);
+  --gray-400: #a5a1b5;
+  --gray-500: var(--muted);
+  --gray-600: var(--muted);
+  --gray-700: var(--ink2);
+  --gray-900: var(--ink);
+
+  --color-success: var(--green);
+  --color-success-tint: var(--green-tint);
+  --color-warning: var(--amber);
+  --color-warning-tint: var(--amber-tint);
+  --color-danger: var(--red);
+  --color-danger-tint: var(--red-tint);
+  --color-danger-border: #f8cfcf;
+  --color-danger-ring: rgba(185, 28, 28, 0.14);
+  --color-info: #0369a1;
+  --color-info-tint: #f0f9ff;
+
+  /* Typography */
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --text-display: 2.25rem;
+  --text-h1: 1.75rem;
+  --text-h2: 1.25rem;
+  --text-h3: 1.125rem;
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Legacy radius & shadow */
+  --radius-sm: var(--r-control);
+  --radius-md: var(--r-cover);
+  --shadow-card: var(--shadow-lift);
+}
+
+html,
+body {
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: var(--tint2);
+  color: var(--ink);
+}

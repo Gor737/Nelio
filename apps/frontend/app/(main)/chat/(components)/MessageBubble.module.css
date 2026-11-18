@@ -1,0 +1,154 @@
+/* Mine on the right (violet), others on the left (white) */
+.row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.row[data-mine="true"] {
+  justify-content: flex-end;
+}
+
+.bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(520px, 75%);
+  padding: 8px 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: 18px 18px 18px 6px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.row[data-mine="true"] .bubble {
+  border-color: transparent;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--grad);
+  color: #fff;
+}
+
+.sender {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--violet-d);
+}
+
+.body {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.row[data-mine="true"] .body {
+  color: #fff;
+}
+
+.bubble[data-deleted="true"] .body {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.time {
+  align-self: flex-end;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.row[data-mine="true"] .time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ---------- Edit / Delete (own messages) ---------- */
+/* Actions sit beside my bubble, visible on hover or keyboard focus */
+.row {
+  align-items: center;
+  gap: 6px;
+}
+
+.actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.row:hover .actions,
+.actions:focus-within {
+  opacity: 1;
+}
+
+.actionBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--violet-d);
+  cursor: pointer;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--tint);
+}
+
+.actionBtn[data-danger="true"] {
+  color: #b91c1c;
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.actionBtn:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 1px;
+}
+
+/* Inline edit form replaces the bubble text */
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.editInput {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.editInput:focus {
+  outline: 2px solid #fff;
+}
+
+.editBtns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Phone: no hover, so always show actions */
+@media (hover: none) {
+  .actions {
+    opacity: 1;
+  }
+}
+
+.editError {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
