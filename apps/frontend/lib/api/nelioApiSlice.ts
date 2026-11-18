@@ -52,6 +52,6 @@ const baseQueryWithReauth: BaseQueryFn<
 export const nelioApiSlice = createApi({
   baseQuery: baseQueryWithReauth,
   reducerPath: "nelioApi",
-  tagTypes: ["Courses", "MyEnrollments", "Me", "TeacherApplication", "Notifications"],
+  tagTypes: ["Courses", "MyEnrollments", "Me", "TeacherApplication", "Notifications", "Conversations", "Messages"],
   endpoints: (build) => ({}),
 });

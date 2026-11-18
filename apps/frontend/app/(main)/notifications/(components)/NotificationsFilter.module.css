@@ -1,0 +1,46 @@
+/* Segmented pill: All | Unread */
+.filter {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.tab {
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  color: var(--violet-d);
+}
+
+.tab[aria-pressed="true"] {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+
+.tab:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: none;
+  }
+}

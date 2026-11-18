@@ -171,3 +171,81 @@
     animation: none;
   }
 }
+
+/* ---------- Title row: heading left, "Mark all as read" right ---------- */
+.headRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.markAllBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--violet-d);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.markAllBtn:hover:not(:disabled) {
+  border-color: var(--tint2);
+  background: var(--tint);
+}
+
+.markAllBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.markAllBtn:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+/* Previous list fades while a new filter loads */
+.list[data-busy="true"] {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+/* ---------- Load more ---------- */
+.loadMoreBtn {
+  align-self: center;
+  height: 42px;
+  padding: 0 22px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--violet-d);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.loadMoreBtn:hover:not(:disabled) {
+  border-color: var(--tint2);
+  background: var(--tint);
+}
+
+.loadMoreBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.loadMoreBtn:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}

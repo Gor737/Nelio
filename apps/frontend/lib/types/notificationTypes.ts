@@ -49,3 +49,5 @@ export type NotificationsQueryArgs = {
   unread?: boolean;
   cursor?: string;
 };
+
+export type NotificationFilter = "all" | "unread";

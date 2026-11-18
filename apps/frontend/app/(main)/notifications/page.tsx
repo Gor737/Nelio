@@ -1,7 +1,5 @@
 import { Notifications } from "./(components)/Notifications";
 
-export default async function(){
-    return (
-        <Notifications />
-    )
+export default function NotificationsPage() {
+  return <Notifications />;
 }

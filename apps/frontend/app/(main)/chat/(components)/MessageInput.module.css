@@ -1,0 +1,70 @@
+/* Bottom bar: [ input ......... ] (Send) */
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  font-family: inherit;
+  font-size: 14.5px;
+  color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px var(--tint2);
+}
+
+.send {
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--grad);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.send:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: default;
+}
+
+.send:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+/* Error sits above the input, full width */
+.error {
+  flex-basis: 100%;
+  order: -1;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+}

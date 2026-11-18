@@ -86,6 +86,47 @@
   color: var(--muted);
 }
 
+/* Bell link to /notifications (badge sits on its top-right corner) */
+.iconLink {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--ink2);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.iconLink:hover {
+  background: var(--tint);
+  color: var(--violet-d);
+}
+
+.iconLink:focus-visible {
+  outline: 3px solid var(--tint2);
+  outline-offset: 2px;
+}
+
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--grad);
+  box-shadow: 0 0 0 2px #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  color: #fff;
+  text-align: center;
+}
+
 /* Avatar + name */
 .user {
   display: inline-flex;
